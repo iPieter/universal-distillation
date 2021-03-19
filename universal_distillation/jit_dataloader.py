@@ -1,10 +1,10 @@
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
-
+import torch
 from torch.utils.data import Dataset, DataLoader
 import logging
 
+logger = logging.getLogger("dataloader")
 
-logger = logging.getLogger('dataloader')
 
 class JITTokenizedDataset(Dataset):
     """
@@ -24,30 +24,26 @@ class JITTokenizedDataset(Dataset):
         """
         logger.info(f"Loading data from {file_path}")
         with open(file_path, "r", encoding="utf8") as fp:
-            data = fp.readlines()
-        
-        logger.info(f"Loaded {len(data)} lines")
+            self.data = fp.readlines()
+
+        logger.info(f"Loaded {len(self.data)} lines")
 
         logger.info(f"Initializing tokenizer {tokenizer}")
-        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(tokenizer)
-        
-        
+        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(
+            tokenizer
+        )
 
     def __len__(self):
-        return len(self.landmarks_frame)
+        return len(self.data)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_name = os.path.join(self.root_dir, self.landmarks_frame.iloc[idx, 0])
-        image = io.imread(img_name)
-        landmarks = self.landmarks_frame.iloc[idx, 1:]
-        landmarks = np.array([landmarks])
-        landmarks = landmarks.astype("float").reshape(-1, 2)
-        sample = {"image": image, "landmarks": landmarks}
+        return self.data[idx]
 
-        if self.transform:
-            sample = self.transform(sample)
+    def batch_sequences(self, batch):
+        return self.tokenizer.batch_encode_plus(batch, padding=True, truncation=True)
 
-        return sample
+
+        
