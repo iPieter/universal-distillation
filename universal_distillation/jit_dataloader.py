@@ -1,9 +1,10 @@
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
+
 from torch.utils.data import Dataset, DataLoader
 import logging
-import logging.config
-import yaml
+
+
 logger = logging.getLogger('dataloader')
-logger.info("Logger is started")
 
 class JITTokenizedDataset(Dataset):
     """
@@ -13,7 +14,7 @@ class JITTokenizedDataset(Dataset):
     For Universal Distillation, multiple tokenizations are required and the results are aligned.
     """
 
-    def __init__(self, csv_file, root_dir, transform=None):
+    def __init__(self, file_path: str, tokenizer: str):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -21,8 +22,16 @@ class JITTokenizedDataset(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        logger.debug("Loading data")
-        print("test")
+        logger.info(f"Loading data from {file_path}")
+        with open(file_path, "r", encoding="utf8") as fp:
+            data = fp.readlines()
+        
+        logger.info(f"Loaded {len(data)} lines")
+
+        logger.info(f"Initializing tokenizer {tokenizer}")
+        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(tokenizer)
+        
+        
 
     def __len__(self):
         return len(self.landmarks_frame)
