@@ -5,9 +5,18 @@ import pytorch_lightning as pl
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
 
-from torchvision.datasets.mnist import MNIST
-from torchvision import transforms
+from jit_dataloader import JITTokenizedDataset
+import logging
+import logging.config
 
+import yaml
+with open("logging.yaml", "rt") as f:
+    config = yaml.safe_load(f.read())
+    f.close()
+
+#logging.config.dictConfig(config)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class LitClassifier(pl.LightningModule):
     def __init__(self, hidden_dim=128, learning_rate=1e-3):
@@ -58,38 +67,41 @@ def cli_main():
     # ------------
     # args
     # ------------
-    parser = ArgumentParser()
-    parser.add_argument('--batch_size', default=32, type=int)
-    parser = pl.Trainer.add_argparse_args(parser)
-    parser = LitClassifier.add_model_specific_args(parser)
-    args = parser.parse_args()
+    #parser = ArgumentParser()
+    #parser.add_argument('--batch_size', default=32, type=int)
+    #parser = pl.Trainer.add_argparse_args(parser)
+    #parser = LitClassifier.add_model_specific_args(parser)
+    #args = parser.parse_args()
 
     # ------------
     # data
     # ------------
-    dataset = MNIST('', train=True, download=True, transform=transforms.ToTensor())
-    mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
-    mnist_train, mnist_val = random_split(dataset, [55000, 5000])
+    logger.debug("test")
+    dataset = JITTokenizedDataset("", "")
+    
+    #dataset = MNIST('', train=True, download=True, transform=transforms.ToTensor())
+    #mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
+    #mnist_train, mnist_val = random_split(dataset, [55000, 5000])
 
-    train_loader = DataLoader(mnist_train, batch_size=args.batch_size)
-    val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
-    test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
+    #train_loader = DataLoader(mnist_train, batch_size=args.batch_size)
+    #val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
+    #test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
 
     # ------------
     # model
     # ------------
-    model = LitClassifier(args.hidden_dim, args.learning_rate)
+    #model = LitClassifier(args.hidden_dim, args.learning_rate)
 
     # ------------
     # training
     # ------------
-    trainer = pl.Trainer.from_argparse_args(args)
-    trainer.fit(model, train_loader, val_loader)
+    #trainer = pl.Trainer.from_argparse_args(args)
+    #trainer.fit(model, train_loader, val_loader)
 
     # ------------
     # testing
     # ------------
-    trainer.test(test_dataloaders=test_loader)
+    #trainer.test(test_dataloaders=test_loader)
 
 
 if __name__ == '__main__':
