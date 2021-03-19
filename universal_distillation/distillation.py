@@ -15,7 +15,7 @@ with open("logging.yaml", "rt") as f:
     f.close()
 
 #logging.config.dictConfig(config)
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)-10s - %(levelname)-5s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class LitClassifier(pl.LightningModule):
@@ -77,7 +77,10 @@ def cli_main():
     # data
     # ------------
     logger.debug("test")
-    dataset = JITTokenizedDataset("", "")
+    dataset = JITTokenizedDataset(
+        file_path="/cw/dtaijupiter/NoCsBack/dtai/pieterd/projects/fair-distillation/data/oscar_dutch/nl_dedup_tiny.txt", 
+        tokenizer="pdelobelle/robbert-v2-dutch-base"
+    "")
     
     #dataset = MNIST('', train=True, download=True, transform=transforms.ToTensor())
     #mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
