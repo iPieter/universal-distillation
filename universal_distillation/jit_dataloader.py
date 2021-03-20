@@ -47,6 +47,6 @@ class JITTokenizedDataset(Dataset):
             batch, padding=True, truncation=True, return_tensors="pt"
         )
 
-        output['lengths'] = torch.Tensor([len(x) for x in self.tokenizer.batch_encode_plus(batch).input_ids])
+        output['lengths'] = torch.Tensor([len(x) for x in self.tokenizer.batch_encode_plus(batch).input_ids], , dtype=torch.long)
 
         return output
