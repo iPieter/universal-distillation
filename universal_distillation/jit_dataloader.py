@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 import torch
 from torch.utils.data import Dataset, DataLoader
 import logging
-
+from transformers.tokenization_utils_base import BatchEncoding
 logger = logging.getLogger("dataloader")
 
 
@@ -43,7 +43,10 @@ class JITTokenizedDataset(Dataset):
         return self.data[idx]
 
     def batch_sequences(self, batch):
-        return self.tokenizer.batch_encode_plus(batch, padding=True, truncation=True)
+        output: BatchEncoding = self.tokenizer.batch_encode_plus(
+            batch, padding=True, truncation=True, return_tensors="pt"
+        )
 
+        output['lengths'] = torch.Tensor([len(x) for x in self.tokenizer.batch_encode_plus(batch).input_ids])
 
-        
+        return output
