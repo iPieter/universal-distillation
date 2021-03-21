@@ -52,7 +52,7 @@ class BaseTransformer(pl.LightningModule):
         self.save_hyperparameters()
 
         self.config = AutoConfig.from_pretrained(model_name_or_path)
-        self.model = AutoModelForMaskedLM.from_pretrained(model_name_or_path, config=self.config)
+        self.model = AutoModelForMaskedLM.from_config(self.config)
         self.model.resize_token_embeddings(40000)
         
 
