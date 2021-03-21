@@ -52,7 +52,7 @@ class JITTokenizedDataset(Dataset):
         )
 
         # TODO more efficient implementation
-        output['lengths'] = torch.tensor([len(x) for x in self.tokenizer.batch_encode_plus(batch).input_ids], dtype=torch.long)
+        output['lengths'] = torch.tensor([len(x) for x in self.tokenizer.batch_encode_plus(batch, truncation=True).input_ids], dtype=torch.long)
 
         return self._mlm_objective(output)
 
