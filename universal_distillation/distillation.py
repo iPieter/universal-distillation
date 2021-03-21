@@ -60,7 +60,7 @@ class BaseTransformer(pl.LightningModule):
         return self.model(**inputs)
 
     def training_step(self, batch, batch_idx):
-        print(batch)
+        #print(batch)
         outputs = self(**batch)
         loss = outputs[0]
         return loss
