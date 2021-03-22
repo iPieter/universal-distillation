@@ -59,18 +59,39 @@ class BaseTransformer(pl.LightningModule):
 
         self.ce_loss_fct = nn.KLDivLoss(reduction="batchmean")
 
+        self.temperature = 2.0
+        self.alpha_ce = 5.0
+        self.alpha_mlm = 2.0
+        self.alpha_cos = 1.0
 
     def forward(self, **inputs):
         return self.model(**inputs)
 
     def training_step(self, batch, batch_idx):
         # print(batch)
-        mlm_loss, student_logits = self(**batch, return_dict=False)
+        loss_mlm, student_logits = self(**batch, return_dict=False)
 
         with torch.no_grad():
             teacher_logits = self.teacher(
-                input_ids=batch['input_ids'], attention_mask=batch['attention_mask'], return_dict=False
+                input_ids=batch['input_ids'], attention_mask=batch['attention_mask'], return_dict=True
+            ).logits
+
+        mask = batch['attention_mask'].bool().unsqueeze(-1).expand_as(student_logits)  # (bs, seq_lenth, voc_size)
+        student_logits_slct = torch.masked_select(student_logits, mask)  # (bs * seq_length * voc_size) modulo the 1s in mask
+        student_logits_slct = student_logits_slct.view(-1, student_logits.size(-1))  # (bs * seq_length, voc_size) modulo the 1s in mask
+        teacher_logits_slct = torch.masked_select(teacher_logits, mask)  # (bs * seq_length * voc_size) modulo the 1s in mask
+        teacher_logits_slct = teacher_logits_slct.view(-1, student_logits.size(-1))  # (bs * seq_length, voc_size) modulo the 1s in mask
+        assert teacher_logits_slct.size() == student_logits_slct.size()
+
+        loss_ce = (
+            self.ce_loss_fct(
+                F.log_softmax(student_logits_slct / self.temperature, dim=-1),
+                F.softmax(teacher_logits_slct / self.temperature, dim=-1),
             )
+            * (self.temperature) ** 2
+        )
+        loss = self.alpha_ce * loss_ce + self.alpha_mlm * loss_mlm
+
 
         self.log("loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
