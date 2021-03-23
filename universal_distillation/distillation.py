@@ -2,12 +2,14 @@ from argparse import ArgumentParser
 import torch
 import pytorch_lightning as pl
 from torch.nn import functional as F
-from torch.utils.data import DataLoader, random_split, RandomSampler, BatchSampler
+from torch.utils.data import DataLoader, random_split, RandomSampler, BatchSampler, DistributedSampler
 import logging
 import logging.config
 from typing import Optional
 import yaml
+from os import cpu_count
 from pytorch_lightning.loggers import TensorBoardLogger
+from torch.optim.lr_scheduler import LambdaLR
 
 from jit_dataloader import JITTokenizedDataset
 from grouped_batch_sampler import GroupedBatchSampler, create_lengths_groups
@@ -20,6 +22,7 @@ from transformers import (
     AutoConfig,
     AutoTokenizer,
     get_linear_schedule_with_warmup,
+    PretrainedConfig
 )
 
 with open("logging.yaml", "rt") as f:
@@ -33,6 +36,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class LRPolicy(object):
+    def __init__(self, num_warmup_steps, num_training_steps, last_epoch=-1):
+        self.num_warmup_steps = num_warmup_steps
+        self.num_training_steps = num_training_steps
+
+    def __call__(self, current_step):
+        if current_step < self.num_warmup_steps:
+            return float(current_step) / float(max(1,  self.num_warmup_steps))
+        return max(
+            0.0, float( self.num_training_steps - current_step) / float(max(1,  self.num_training_steps -  self.num_warmup_steps))
+        )
 
 class BaseTransformer(pl.LightningModule):
     def __init__(
@@ -51,11 +65,17 @@ class BaseTransformer(pl.LightningModule):
 
         self.save_hyperparameters()
 
-        self.config = AutoConfig.from_pretrained(model_name_or_path)
-        self.model = AutoModelForMaskedLM.from_config(self.config)
-        self.model.resize_token_embeddings(40000)
+        self.config:PretrainedConfig = AutoConfig.from_pretrained(model_name_or_path)
+        self.config.num_hidden_layers = 6
+        self.student = AutoModelForMaskedLM.from_config(self.config)
+        self.student.resize_token_embeddings(40000)
+
         self.teacher = AutoModelForMaskedLM.from_pretrained(model_name_or_path)
         self.teacher.resize_token_embeddings(40000)
+        self.teacher.eval()
+        for param in self.teacher.parameters():
+            param.requires_grad = False
+
 
         self.ce_loss_fct = nn.KLDivLoss(reduction="batchmean")
 
@@ -65,7 +85,7 @@ class BaseTransformer(pl.LightningModule):
         self.alpha_cos = 1.0
 
     def forward(self, **inputs):
-        return self.model(**inputs)
+        return self.student(**inputs)
 
     def training_step(self, batch, batch_idx):
         # print(batch)
@@ -125,7 +145,7 @@ class BaseTransformer(pl.LightningModule):
 
     def configure_optimizers(self):
         "Prepare optimizer and schedule (linear warmup and decay)"
-        model = self.model
+        model = self.student
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {
@@ -151,12 +171,7 @@ class BaseTransformer(pl.LightningModule):
             eps=self.hparams.adam_epsilon,
         )
 
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer,
-            num_warmup_steps=self.hparams.warmup_steps,
-            num_training_steps=self.total_steps,
-        )
-        scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
+        scheduler = {"scheduler": LambdaLR(optimizer, lr_lambda=LRPolicy(self.hparams.warmup_steps, self.total_steps)), "interval": "step", "frequency": 1, 'name': 'learning_rate'}
         return [optimizer], [scheduler]
 
     @staticmethod
@@ -178,6 +193,7 @@ def cli_main():
     # ------------
     parser = ArgumentParser()
     parser.add_argument("--batch_size", default=32, type=int)
+    parser.add_argument("--num_workers", type=int, default=cpu_count())
     parser = pl.Trainer.add_argparse_args(parser)
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
@@ -195,14 +211,16 @@ def cli_main():
     # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
 
     sampler = RandomSampler(dataset)
+    sampler = DistributedSampler(sampler)
 
     # groups = create_lengths_groups(lengths=dataset.lengths, k=params.max_model_input_size)
     sampler = BatchSampler(sampler=sampler, batch_size=args.batch_size, drop_last=False)
-
+    
     train_loader = DataLoader(
         dataset,
         batch_sampler=sampler,
         collate_fn=dataset.batch_sequences,
+        num_workers=args.num_workers
     )
     # val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
     # test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
