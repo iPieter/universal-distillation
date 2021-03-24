@@ -47,6 +47,9 @@ class JITTokenizedDataset(Dataset):
         return self.data[idx]
 
     def batch_sequences(self, batch):
+        if type(batch) == str:
+            batch = [batch]
+            
         output: BatchEncoding = self.tokenizer.batch_encode_plus(
             batch, padding=True, truncation=True, return_tensors="pt"
         )

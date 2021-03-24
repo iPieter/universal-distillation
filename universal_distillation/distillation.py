@@ -211,7 +211,7 @@ def cli_main():
     # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
 
     sampler = RandomSampler(dataset)
-    sampler = DistributedSampler(sampler)
+    #sampler = DistributedSampler(sampler)
 
     # groups = create_lengths_groups(lengths=dataset.lengths, k=params.max_model_input_size)
     sampler = BatchSampler(sampler=sampler, batch_size=args.batch_size, drop_last=False)
