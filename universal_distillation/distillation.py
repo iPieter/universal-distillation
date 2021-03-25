@@ -29,6 +29,8 @@ from transformers import (
     get_linear_schedule_with_warmup,
     PretrainedConfig,
 )
+from pytorch_lightning.plugins import DDPPlugin
+
 
 with open("logging.yaml", "rt") as f:
     config = yaml.safe_load(f.read())
@@ -40,6 +42,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)-10s - %(levelname)-5s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
 
 def cli_main():
     pl.seed_everything(1234)
@@ -66,7 +69,6 @@ def cli_main():
     # mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
     # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
 
-   
     # val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
     # test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
     # for batch in train_loader:
@@ -83,7 +85,13 @@ def cli_main():
     # ------------
     logger = TensorBoardLogger("tb_logs", name="my_model")
 
-    trainer = pl.Trainer.from_argparse_args(args, logger=logger, accelerator='ddp')
+    trainer = pl.Trainer.from_argparse_args(
+        args,
+        logger=logger,
+        accelerator="ddp",
+        plugins=[DDPPlugin(find_unused_parameters=False)],
+        profiler="simple",
+    )
     trainer.fit(model, data_module)
 
     # ------------
