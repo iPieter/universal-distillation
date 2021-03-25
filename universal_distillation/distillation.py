@@ -88,8 +88,6 @@ def cli_main():
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=logger,
-        accelerator="ddp",
-        plugins=[DDPPlugin(find_unused_parameters=False)],
         profiler="simple",
     )
     trainer.fit(model, data_module)
