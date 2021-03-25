@@ -17,10 +17,6 @@ import logging.config
 import yaml
 from os import cpu_count
 from typing import Optional
-
-from jit_dataloader import JITTokenizedDataset
-
-
 from transformers import (
     AdamW,
     AutoModelForMaskedLM,
@@ -29,6 +25,22 @@ from transformers import (
     get_linear_schedule_with_warmup,
     PretrainedConfig,
 )
+
+
+
+class LRPolicy(object):
+    def __init__(self, num_warmup_steps, num_training_steps, last_epoch=-1):
+        self.num_warmup_steps = num_warmup_steps
+        self.num_training_steps = num_training_steps
+
+    def __call__(self, current_step):
+        if current_step < self.num_warmup_steps:
+            return float(current_step) / float(max(1, self.num_warmup_steps))
+        return max(
+            0.0,
+            float(self.num_training_steps - current_step)
+            / float(max(1, self.num_training_steps - self.num_warmup_steps)),
+        )
 
 class BaseTransformer(pl.LightningModule):
     def __init__(
