@@ -1,5 +1,25 @@
 site_name: Universal Language Model Distillation
 
 plugins:
-  - search
   - mkdocstrings
+
+theme:
+  name: gitbook
+  highlightjs: true
+  hljs_languages:
+    - python
+
+nav:
+    - Introduction: 'index.md'
+    - 🚀 Tutorials:
+      - Get started: 'tutorials/index.md'
+    - 🧑‍💻 How-to guides:
+      - Distil your own model: 'tutorials/index.md'
+      - Distil from two teacher models: 'tutorials/index.md'
+      - Domain-adapted distillation: 'tutorials/index.md'
+    - 🤖 API reference:
+      - Tokenization: 'tutorials/index.md'
+      - Distillation: 'tutorials/index.md'
+      - Training: 'tutorials/index.md'
+    - 🛰 Further reading:
+      - Paper: 'tutorials/index.md'
