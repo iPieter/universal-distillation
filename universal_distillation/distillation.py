@@ -83,7 +83,7 @@ def cli_main():
     # ------------
     logger = TensorBoardLogger("tb_logs", name="my_model")
 
-    trainer = pl.Trainer.from_argparse_args(args, logger=logger)
+    trainer = pl.Trainer.from_argparse_args(args, logger=logger, accelerator='ddp')
     trainer.fit(model, data_module)
 
     # ------------
