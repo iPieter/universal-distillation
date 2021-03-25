@@ -18,8 +18,8 @@ import yaml
 from os import cpu_count
 from typing import Optional
 
-from jit_dataloader import JITTokenizedDataset
 from modules.base import BaseTransformer
+from data.jit_data_module import JITDataModule
 
 from transformers import (
     AdamW,
@@ -41,22 +41,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-class LRPolicy(object):
-    def __init__(self, num_warmup_steps, num_training_steps, last_epoch=-1):
-        self.num_warmup_steps = num_warmup_steps
-        self.num_training_steps = num_training_steps
-
-    def __call__(self, current_step):
-        if current_step < self.num_warmup_steps:
-            return float(current_step) / float(max(1, self.num_warmup_steps))
-        return max(
-            0.0,
-            float(self.num_training_steps - current_step)
-            / float(max(1, self.num_training_steps - self.num_warmup_steps)),
-        )
-
-
 def cli_main():
     pl.seed_everything(1234)
 
@@ -73,7 +57,7 @@ def cli_main():
     # ------------
     # data
     # ------------
-    dataset = JITTokenizedDataset(
+    data_module = JITDataModule(
         file_path="/cw/dtaijupiter/NoCsBack/dtai/pieterd/projects/fair-distillation/data/oscar_dutch/nl_dedup_tiny.txt",
         tokenizer="pdelobelle/robbert-v2-dutch-base",
     )
@@ -82,18 +66,7 @@ def cli_main():
     # mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
     # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
 
-    sampler = RandomSampler(dataset)
-    # sampler = DistributedSampler(sampler)
-
-    # groups = create_lengths_groups(lengths=dataset.lengths, k=params.max_model_input_size)
-    sampler = BatchSampler(sampler=sampler, batch_size=args.batch_size, drop_last=False)
-
-    train_loader = DataLoader(
-        dataset,
-        batch_sampler=sampler,
-        collate_fn=dataset.batch_sequences,
-        num_workers=args.num_workers,
-    )
+   
     # val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
     # test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
     # for batch in train_loader:
@@ -111,7 +84,7 @@ def cli_main():
     logger = TensorBoardLogger("tb_logs", name="my_model")
 
     trainer = pl.Trainer.from_argparse_args(args, logger=logger)
-    trainer.fit(model, train_loader)
+    trainer.fit(model, data_module)
 
     # ------------
     # testing
