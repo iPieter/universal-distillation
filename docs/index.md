@@ -10,7 +10,7 @@ trainer.fit(model, train_loader)
 ```
 
 
-::: universal_distillation.jit_dataloader
+::: universal_distillation.data.jit_dataloader
     rendering:
       show_root_heading: false
 
