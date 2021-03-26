@@ -54,6 +54,7 @@ def cli_main():
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_workers", type=int, default=cpu_count())
     parser.add_argument("--data", type=str, required=True)
+    parser.add_argument("--teacher", type=str, required=True)
     parser = pl.Trainer.add_argparse_args(parser)
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
@@ -63,7 +64,7 @@ def cli_main():
     # ------------
     data_module = JITDataModule(
         file_path=args.data,
-        tokenizer="pdelobelle/robbert-v2-dutch-base",
+        tokenizer=args.teacher,
     )
 
     # dataset = MNIST('', train=True, download=True, transform=transforms.ToTensor())
@@ -79,7 +80,7 @@ def cli_main():
     # ------------
     # model
     # ------------
-    model = BaseTransformer("pdelobelle/robbert-v2-dutch-base", **vars(args))
+    model = BaseTransformer(args.teacher, **vars(args))
 
     # ------------
     # training
