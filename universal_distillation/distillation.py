@@ -55,6 +55,7 @@ def cli_main():
     parser.add_argument("--num_workers", type=int, default=cpu_count())
     parser.add_argument("--data", type=str, required=True)
     parser.add_argument("--teacher", type=str, required=True)
+    parser.add_argument("--save_dir", type=str, required=True)
     parser = pl.Trainer.add_argparse_args(parser)
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
@@ -95,6 +96,9 @@ def cli_main():
         profiler="simple",
     )
     trainer.fit(model, data_module)
+
+    model.student.save_pretrained(args.save_dir)
+    tokenizer.save_pretrained(args.save_dir)
 
     # ------------
     # testing

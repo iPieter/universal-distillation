@@ -13,10 +13,14 @@ nav:
     - Introduction: 'index.md'
     - 🚀 Tutorials:
       - Get started: 'tutorials/index.md'
+      - Distillation using the CLI: 'tutorials/cli.md'
+      - Distillation from Python: 'tutorials/cli.md'
     - 🧑‍💻 How-to guides:
       - Distil your own model: 'tutorials/index.md'
+      - Distil with MLM smoothing: 'tutorials/index.md'
       - Distil from two teacher models: 'tutorials/index.md'
       - Domain-adapted distillation: 'tutorials/index.md'
+      - Mitigate stereotyping with constraints: 'tutorials/index.md'
     - 🤖 API reference:
       - Tokenization: 'tutorials/index.md'
       - Distillation: 'tutorials/index.md'
