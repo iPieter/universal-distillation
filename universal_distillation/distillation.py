@@ -53,6 +53,7 @@ def cli_main():
     parser = ArgumentParser()
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_workers", type=int, default=cpu_count())
+    parser.add_argument("--data", type=str, required=True)
     parser = pl.Trainer.add_argparse_args(parser)
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
@@ -61,7 +62,7 @@ def cli_main():
     # data
     # ------------
     data_module = JITDataModule(
-        file_path="/cw/dtaijupiter/NoCsBack/dtai/pieterd/projects/fair-distillation/data/oscar_dutch/nl_dedup_tiny.txt",
+        file_path=args.data,
         tokenizer="pdelobelle/robbert-v2-dutch-base",
     )
 
@@ -88,8 +89,8 @@ def cli_main():
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=logger,
-        accelerator="ddp",
-        plugins=[DDPPlugin(find_unused_parameters=False)],
+        #accelerator="ddp",
+        #plugins=[DDPPlugin(find_unused_parameters=False)],
         profiler="simple",
     )
     trainer.fit(model, data_module)
