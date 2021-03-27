@@ -29,12 +29,27 @@ curl https://opus.nlpl.eu/download.php?f=Europarl/v8/mono/en.txt.gz
 
 
 ```bash
-python universal_distillation/distillation.py 
+python universal_distillation/distillation.py \
+    --batch_size 6 \
+    --gpus 1 \
+    --max_epochs 3 \
+    --save_dir data/test01/ \
+    --teacher pdelobelle/robbert-v2-dutch-base \
+    --data /cw/dtaijupiter/NoCsBack/dtai/pieterd/projects/fair-distillation/data/oscar_dutch/nl_dedup_mini.txt
+ 
 ```
+
+If you feel this takes too long and you just want to try out the training, for example to get a sense of timings, you can add `--limit_train_batches N`. This limits each epoch to `N` batches during training.
 
 ---
 
 ## Step 3: Use your model
 
+```python
+from transformers import pipeline
+p = pipeline("fill-mask", model="/cw/dtaijupiter/NoCsBack/dtai/pieterd/projects/universal-distillation/data/test01/")
+
+p("This is a [MASK].")
+```
 
 ## credits

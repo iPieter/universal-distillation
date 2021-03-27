@@ -21,7 +21,7 @@ class JITTokenizedDataset(Dataset):
     def __init__(
         self,
         file_path: str,
-        tokenizer: str,
+        tokenizer: PreTrainedTokenizerBase,
         teacher_tokenizers: Optional[Collection[str]] = None,
     ):
         """
@@ -39,10 +39,8 @@ class JITTokenizedDataset(Dataset):
 
         logger.info(f"Loaded {len(self.data)} lines")
 
-        logger.info(f"Initializing tokenizer {tokenizer}")
-        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(
-            tokenizer
-        )
+        self.tokenizer = tokenizer
+        
         self.tokenizer.model_max_length = 512
         self.mlm_mask_prop = 0.15
 

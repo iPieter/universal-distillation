@@ -45,6 +45,9 @@ logger = logging.getLogger(__name__)
 
 
 def cli_main():
+    """
+    Run universal-distillation from the command line.
+    """
     pl.seed_everything(1234)
 
     # ------------
@@ -60,12 +63,13 @@ def cli_main():
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
 
-    # ------------
-    # data
-    # ------------
+    tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(args.teacher)
+
+    logger.info(f"Initializing tokenizer {tokenizer}")
+
     data_module = JITDataModule(
         file_path=args.data,
-        tokenizer=args.teacher,
+        tokenizer=tokenizer,
     )
 
     # dataset = MNIST('', train=True, download=True, transform=transforms.ToTensor())
@@ -86,13 +90,13 @@ def cli_main():
     # ------------
     # training
     # ------------
-    logger = TensorBoardLogger("tb_logs", name="my_model")
+    tb_logger = TensorBoardLogger("tb_logs", name="my_model")
 
     trainer = pl.Trainer.from_argparse_args(
         args,
-        logger=logger,
-        #accelerator="ddp",
-        #plugins=[DDPPlugin(find_unused_parameters=False)],
+        logger=tb_logger,
+        # accelerator="ddp",
+        # plugins=[DDPPlugin(find_unused_parameters=False)],
         profiler="simple",
     )
     trainer.fit(model, data_module)
