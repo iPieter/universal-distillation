@@ -1,11 +1,13 @@
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
+from transformers import PreTrainedTokenizerBase
+
 from .jit_dataloader import JITTokenizedDataset
 
 
 class JITDataModule(LightningDataModule):
-    def __init__(self, file_path, tokenizer):
+    def __init__(self, file_path: str, tokenizer: PreTrainedTokenizerBase):
         super().__init__()
         self.file_path = file_path
         self.tokenizer = tokenizer
