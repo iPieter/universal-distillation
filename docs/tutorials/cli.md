@@ -7,11 +7,7 @@ In this tutorial, we will show you how to set up a distillation task from the co
 
 ---
 ## Step 0: Install Universal-distillation and it's dependencies
-
-
-### GPU support
-
-
+You can use `pip install universal-distillation` if you have a recent Python version. For more infromation, see the ['Get Started' tutorial](/tutorials/).
 
 ---
 ## Step 1: Get your dataset
@@ -20,36 +16,43 @@ This is a very high-quality parallel corpus from the European Parlement created 
 It's also quite small for a language corpus nowadays, only 114 MB, but for our distillation tutorial that's ok.
 
 ```bash
-curl https://opus.nlpl.eu/download.php?f=Europarl/v8/mono/en.txt.gz 
+wget https://opus.nlpl.eu/download.php\?f\=Europarl/v8/mono/en.txt.gz -O en.txt.gz
+gunzip en.txt.gz
 ```
+
+The data is now unzipped and stored in the file `en.txt`.
 
 ---
 
 ## Step 2: Start training
-
+Now we have the data, we can start training. Downloading the teacher model will happen automatically, so no need to do this manually. If you feel this takes too long and you just want to try out the training, for example to get a sense of timings, you can add `--limit_train_batches N`. This limits each epoch to `N` batches during training.
 
 ```bash
 python universal_distillation/distillation.py \
-    --batch_size 6 \
+    --batch_size 8 \
     --gpus 1 \
     --max_epochs 3 \
-    --save_dir data/test01/ \
-    --teacher pdelobelle/robbert-v2-dutch-base \
-    --data /cw/dtaijupiter/NoCsBack/dtai/pieterd/projects/fair-distillation/data/oscar_dutch/nl_dedup_mini.txt
- 
+    --save_dir my_distilled_model/ \
+    --teacher bert-base-uncased \
+    --data en.txt
 ```
 
-If you feel this takes too long and you just want to try out the training, for example to get a sense of timings, you can add `--limit_train_batches N`. This limits each epoch to `N` batches during training.
+There are a few things that happen in the background once you run that command. First, this library creates a student and a teacher model. The teacher is `bert-base-uncased` and the student will use the same architecture as the teacher by default, only the number of heads is smaller: 6 instead of 12. Since we are training on a specific domain (Europarl), this should be enough. Of course, you can mix and match different and bigger teachers with smaller students, but the performance will vary a lot.  
+
+Second, the Huggingface library downloads the teacher model and the tokenizer. Third, the dataset is loaded from disk and initialized with the tokenizer, notice that the tokenization itself happens later by default. Finally, the distillation loop starts. 
 
 ---
 
 ## Step 3: Use your model
+Finally, you can use the model with the Huggingface library! All the files from the student (Pytorch model and tokenizer) are saved in the folder we defined earlier: `my_distilled_model/`. You can import the model from this folder directly and test the masked language modeling task with only 3 lines: 
 
 ```python
 from transformers import pipeline
-p = pipeline("fill-mask", model="/cw/dtaijupiter/NoCsBack/dtai/pieterd/projects/universal-distillation/data/test01/")
+p = pipeline("fill-mask", model="my_distilled_model/")
 
 p("This is a [MASK].")
 ```
+
+Although this was a straitforward example, this is often enough to create your own domain-adapted model. In this case, it's 
 
 ## credits
