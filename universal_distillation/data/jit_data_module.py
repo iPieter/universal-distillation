@@ -7,7 +7,12 @@ from .jit_dataloader import JITTokenizedDataset
 
 
 class JITDataModule(LightningDataModule):
+    """Data module that uses the tokenizer directly on a file."""
+
     def __init__(self, file_path: str, tokenizer: PreTrainedTokenizerBase):
+        """Create a JITDataModule with a tokenizer and a file path.
+    
+        """
         super().__init__()
         self.file_path = file_path
         self.tokenizer = tokenizer
@@ -22,5 +27,5 @@ class JITDataModule(LightningDataModule):
             batch_size=6,
             collate_fn=train_split.batch_sequences,
             pin_memory=True,
-            #num_workers=40
+            # num_workers=40
         )

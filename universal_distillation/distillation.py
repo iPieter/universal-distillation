@@ -97,7 +97,7 @@ def cli_main():
         logger=tb_logger,
         # accelerator="ddp",
         # plugins=[DDPPlugin(find_unused_parameters=False)],
-        profiler="simple",
+        #profiler="simple",
     )
     trainer.fit(model, data_module)
 
