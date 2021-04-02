@@ -18,8 +18,8 @@ import yaml
 from os import cpu_count
 from typing import Optional
 
-from modules.base import BaseTransformer
-from data.jit_data_module import JITDataModule
+from universal_distillation.modules.base import BaseTransformer
+from universal_distillation.data.jit_data_module import JITDataModule
 
 from transformers import (
     AdamW,
@@ -76,15 +76,6 @@ def cli_main():
     # mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
     # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
 
-    # val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
-    # test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
-    # for batch in train_loader:
-    #    print(batch)
-    #    print(len(batch.input_ids))
-    #    break
-    # ------------
-    # model
-    # ------------
     model = BaseTransformer(args.teacher, **vars(args))
 
     # ------------

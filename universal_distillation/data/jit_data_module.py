@@ -24,7 +24,7 @@ class JITDataModule(LightningDataModule):
         )
         return DataLoader(
             train_split,
-            batch_size=6,
+            #batch_size=6,
             collate_fn=train_split.batch_sequences,
             pin_memory=True,
             # num_workers=40
