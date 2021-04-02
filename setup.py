@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='project',
+    name='universal-distillation',
     version='0.0.0',
     description='Describe Your Cool Project',
     author='',
