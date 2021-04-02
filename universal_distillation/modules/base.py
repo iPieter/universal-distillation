@@ -52,6 +52,8 @@ class BaseTransformer(pl.LightningModule):
         weight_decay: float = 0.0,
         train_batch_size: int = 32,
         eval_batch_size: int = 32,
+        accumulate_grad_batches: int = 1,
+        max_epochs: int = 3,
         eval_splits: Optional[list] = None,
         **kwargs
     ):
@@ -62,10 +64,10 @@ class BaseTransformer(pl.LightningModule):
         self.config: PretrainedConfig = AutoConfig.from_pretrained(model_name_or_path)
         self.config.num_hidden_layers = 6
         self.student = AutoModelForMaskedLM.from_config(self.config)
-        self.student.resize_token_embeddings(40000)
+        #self.student.resize_token_embeddings(40000)
 
         self.teacher = AutoModelForMaskedLM.from_pretrained(model_name_or_path)
-        self.teacher.resize_token_embeddings(40000)
+        #self.teacher.resize_token_embeddings(40000)
         self.teacher.eval()
         for param in self.teacher.parameters():
             param.requires_grad = False
@@ -125,7 +127,7 @@ class BaseTransformer(pl.LightningModule):
 
     def setup(self, stage):
         if stage == "fit":
-            # Gegt dataloader by calling it - train_dataloader() is called after setup() by default
+            # Get dataloader by calling it - train_dataloader() is called after setup() by default
             train_loader = self.train_dataloader()
 
             # Calculate total steps
@@ -184,4 +186,5 @@ class BaseTransformer(pl.LightningModule):
         parser.add_argument("--adam_epsilon", default=1e-8, type=float)
         parser.add_argument("--warmup_steps", default=0, type=int)
         parser.add_argument("--weight_decay", default=0.0, type=float)
+        parser.add_argument("--accumulate_grad_batches", default=1, type=int)
         return parent_parser
