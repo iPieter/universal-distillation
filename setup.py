@@ -12,5 +12,10 @@ setup(
     url='https://github.com/PyTorchLightning/pytorch-lightning-conference-seed',
     install_requires=['pytorch-lightning'],
     packages=find_packages(),
+    classifiers=[
+        "Intended Audience :: Science/Research",
+        "Programming Language :: Python :: 3",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    ],
 )
 
