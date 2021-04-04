@@ -27,8 +27,13 @@ from transformers import (
 )
 
 
+class LRPolicy:
+    """
+    Pickable learning rate policy.
 
-class LRPolicy(object):
+    When using multiple GPU's or nodes, communication uses pickle and the default
+    transformers learning rate policy with warmup uses a non-pickable lambda.
+    """
     def __init__(self, num_warmup_steps, num_training_steps, last_epoch=-1):
         self.num_warmup_steps = num_warmup_steps
         self.num_training_steps = num_training_steps
@@ -42,7 +47,11 @@ class LRPolicy(object):
             / float(max(1, self.num_training_steps - self.num_warmup_steps)),
         )
 
+
 class BaseTransformer(pl.LightningModule):
+    """
+
+    """
     def __init__(
         self,
         model_name_or_path: str,
