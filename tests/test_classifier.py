@@ -1,5 +1,5 @@
 from pytorch_lightning import Trainer, seed_everything
-from universal_distillation.data.jit_data_module import JITDataModule
+from universal_distillation.data.jit import JITDataModule
 from universal_distillation.modules.base import BaseTransformer
 from transformers import AutoTokenizer
 import tempfile
@@ -29,10 +29,6 @@ def test_classifier():
             file_path=tmpfilepath,
             tokenizer=tokenizer,
         )
-
-        # dataset = MNIST('', train=True, download=True, transform=transforms.ToTensor())
-        # mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
-        # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
 
         model = BaseTransformer(model_string, train_batch_size=2)
 
