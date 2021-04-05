@@ -34,7 +34,14 @@ class LRPolicy:
     When using multiple GPU's or nodes, communication uses pickle and the default
     transformers learning rate policy with warmup uses a non-pickable lambda.
     """
-    def __init__(self, num_warmup_steps, num_training_steps, last_epoch=-1):
+    def __init__(self, num_warmup_steps, num_training_steps):
+        """
+        Initialize pickable learning rate policy.
+
+        Args:
+            num_warmup_steps: Number of training steps used as warmup steps
+            num_training_steps: Total number of training steps
+        """
         self.num_warmup_steps = num_warmup_steps
         self.num_training_steps = num_training_steps
 
@@ -50,7 +57,7 @@ class LRPolicy:
 
 class BaseTransformer(pl.LightningModule):
     """
-
+    Base distillation model.
     """
     def __init__(
         self,
@@ -66,6 +73,21 @@ class BaseTransformer(pl.LightningModule):
         eval_splits: Optional[list] = None,
         **kwargs
     ):
+    """
+    Constructor for a base distillation model.
+
+    Args:
+        model_name_or_path: name or path of the model, follows Transformers identifiers.
+        learning_rate: Maximum learning rate.
+        adam_epsilon: Epsilon hyperparameter for Adam.
+        warmup_steps: Number of warmup batches.
+        weight_decay: Weight decay hyperparameter
+        train_batch_size: Training batch size per GPU.
+        eval_batch_size: Evaluation batch size per GPU.
+        accumulate_grad_batches: Gradient accumulation multiplier.
+        max_epochs: Number of epochs.
+        eval_splits: 
+    """
         super().__init__()
 
         self.save_hyperparameters()
