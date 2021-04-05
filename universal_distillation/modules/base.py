@@ -73,21 +73,21 @@ class BaseTransformer(pl.LightningModule):
         eval_splits: Optional[list] = None,
         **kwargs
     ):
-    """
-    Constructor for a base distillation model.
+        """
+        Constructor for a base distillation model.
 
-    Args:
-        model_name_or_path: name or path of the model, follows Transformers identifiers.
-        learning_rate: Maximum learning rate.
-        adam_epsilon: Epsilon hyperparameter for Adam.
-        warmup_steps: Number of warmup batches.
-        weight_decay: Weight decay hyperparameter
-        train_batch_size: Training batch size per GPU.
-        eval_batch_size: Evaluation batch size per GPU.
-        accumulate_grad_batches: Gradient accumulation multiplier.
-        max_epochs: Number of epochs.
-        eval_splits: 
-    """
+        Args:
+            model_name_or_path: name or path of the model, follows Transformers identifiers.
+            learning_rate: Maximum learning rate.
+            adam_epsilon: Epsilon hyperparameter for Adam.
+            warmup_steps: Number of warmup batches.
+            weight_decay: Weight decay hyperparameter
+            train_batch_size: Training batch size per GPU.
+            eval_batch_size: Evaluation batch size per GPU.
+            accumulate_grad_batches: Gradient accumulation multiplier.
+            max_epochs: Number of epochs.
+            eval_splits:
+        """
         super().__init__()
 
         self.save_hyperparameters()
@@ -95,10 +95,10 @@ class BaseTransformer(pl.LightningModule):
         self.config: PretrainedConfig = AutoConfig.from_pretrained(model_name_or_path)
         self.config.num_hidden_layers = 6
         self.student = AutoModelForMaskedLM.from_config(self.config)
-        #self.student.resize_token_embeddings(40000)
+        self.student.resize_token_embeddings(40000)
 
         self.teacher = AutoModelForMaskedLM.from_pretrained(model_name_or_path)
-        #self.teacher.resize_token_embeddings(40000)
+        self.teacher.resize_token_embeddings(40000)
         self.teacher.eval()
         for param in self.teacher.parameters():
             param.requires_grad = False

@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 
 from transformers import PreTrainedTokenizerBase
 
-from .jit_dataloader import JITTokenizedDataset
+from .dataloader import JITTokenizedDataset
 
 
 class JITDataModule(LightningDataModule):
