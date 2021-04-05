@@ -19,7 +19,7 @@ from os import cpu_count
 from typing import Optional
 
 from universal_distillation.modules.base import BaseTransformer
-from universal_distillation.data.jit_data_module import JITDataModule
+from universal_distillation.data.jit import JITDataModule
 
 from transformers import (
     AdamW,
