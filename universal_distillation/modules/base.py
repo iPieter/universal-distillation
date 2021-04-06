@@ -104,6 +104,7 @@ class BaseTransformer(pl.LightningModule):
             param.requires_grad = False
 
         self.ce_loss_fct = nn.KLDivLoss(reduction="batchmean")
+        self.cosine_loss_fct = nn.CosineEmbeddingLoss(reduction="mean")
 
         self.temperature = 2.0
         self.alpha_ce = 5.0
@@ -115,14 +116,15 @@ class BaseTransformer(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         # print(batch)
-        loss_mlm, student_logits = self(**batch, return_dict=False)
+        loss_mlm, student_logits, student_hidden_states = self(**batch, return_dict=False, output_hidden_states=True)
 
         with torch.no_grad():
-            teacher_logits = self.teacher(
+            teacher_logits, teacher_hidden_states = self.teacher(
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
-                return_dict=True,
-            ).logits
+                return_dict=False,
+                output_hidden_states=True
+            )
 
         mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_logits)
         student_logits_slct = torch.masked_select(student_logits, mask)
@@ -139,6 +141,22 @@ class BaseTransformer(pl.LightningModule):
             * (self.temperature) ** 2
         )
         loss = self.alpha_ce * loss_ce + self.alpha_mlm * loss_mlm
+
+        if self.alpha_cos > 0.0:
+            student_hidden_states = student_hidden_states[-1]  # (bs, seq_length, dim)
+            teacher_hidden_states = teacher_hidden_states[-1]  # (bs, seq_length, dim)
+            mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_hidden_states)  # (bs, seq_length, dim)
+            assert student_hidden_states.size() == teacher_hidden_states.size()
+            dim = student_hidden_states.size(-1)
+
+            student_hidden_states_slct = torch.masked_select(student_hidden_states, mask)  # (bs * seq_length * dim)
+            student_hidden_states_slct = student_hidden_states_slct.view(-1, dim)  # (bs * seq_length, dim)
+            teacher_hidden_states_slct = torch.masked_select(teacher_hidden_states, mask)  # (bs * seq_length * dim)
+            teacher_hidden_states_slct = teacher_hidden_states_slct.view(-1, dim)  # (bs * seq_length, dim)
+
+            target = student_hidden_states_slct.new(student_hidden_states_slct.size(0)).fill_(1)  # (bs * seq_length,)
+            loss_cos = self.cosine_loss_fct(student_hidden_states_slct, teacher_hidden_states_slct, target)
+            loss += self.alpha_cos * loss_cos
 
         self.log("loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
