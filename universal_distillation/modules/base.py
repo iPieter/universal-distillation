@@ -70,7 +70,10 @@ class BaseTransformer(pl.LightningModule):
         eval_batch_size: int = 32,
         accumulate_grad_batches: int = 1,
         max_epochs: int = 3,
-        eval_splits: Optional[list] = None,
+        temperature: float = 2.0,
+        alpha_teacher_mlm: float = 5.0,
+        alpha_mlm: float = 2.0,
+        alpha_hiddden: float = 1.0,
         **kwargs
     ):
         """
@@ -86,7 +89,10 @@ class BaseTransformer(pl.LightningModule):
             eval_batch_size: Evaluation batch size per GPU.
             accumulate_grad_batches: Gradient accumulation multiplier.
             max_epochs: Number of epochs.
-            eval_splits:
+            temperature: Knowledge distillation hyperparameter.
+            alpha_teacher_mlm: Weight of the MLM distillation loss.
+            alpha_mlm: Weight of the regular MLM loss, i.e. pretraining.
+            alpha_hiddden: Weight of the hidden state distillation loss.
         """
         super().__init__()
 
@@ -106,10 +112,10 @@ class BaseTransformer(pl.LightningModule):
         self.ce_loss_fct = nn.KLDivLoss(reduction="batchmean")
         self.cosine_loss_fct = nn.CosineEmbeddingLoss(reduction="mean")
 
-        self.temperature = 2.0
-        self.alpha_ce = 5.0
-        self.alpha_mlm = 2.0
-        self.alpha_cos = 1.0
+        self.temperature = temperature
+        self.alpha_teacher_mlm = alpha_teacher_mlm
+        self.alpha_mlm = alpha_mlm
+        self.alpha_hiddden = alpha_hiddden
 
     def forward(self, **inputs):
         return self.student(**inputs)
@@ -133,16 +139,16 @@ class BaseTransformer(pl.LightningModule):
         teacher_logits_slct = teacher_logits_slct.view(-1, student_logits.size(-1))
         assert teacher_logits_slct.size() == student_logits_slct.size()
 
-        loss_ce = (
+        loss_teacher_mlm = (
             self.ce_loss_fct(
                 F.log_softmax(student_logits_slct / self.temperature, dim=-1),
                 F.softmax(teacher_logits_slct / self.temperature, dim=-1),
             )
             * (self.temperature) ** 2
         )
-        loss = self.alpha_ce * loss_ce + self.alpha_mlm * loss_mlm
+        loss = self.alpha_teacher_mlm * loss_teacher_mlm + self.alpha_mlm * loss_mlm
 
-        if self.alpha_cos > 0.0:
+        if self.alpha_hiddden > 0.0:
             student_hidden_states = student_hidden_states[-1]  # (bs, seq_length, dim)
             teacher_hidden_states = teacher_hidden_states[-1]  # (bs, seq_length, dim)
             mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_hidden_states)  # (bs, seq_length, dim)
@@ -155,8 +161,8 @@ class BaseTransformer(pl.LightningModule):
             teacher_hidden_states_slct = teacher_hidden_states_slct.view(-1, dim)  # (bs * seq_length, dim)
 
             target = student_hidden_states_slct.new(student_hidden_states_slct.size(0)).fill_(1)  # (bs * seq_length,)
-            loss_cos = self.cosine_loss_fct(student_hidden_states_slct, teacher_hidden_states_slct, target)
-            loss += self.alpha_cos * loss_cos
+            loss_hidden = self.cosine_loss_fct(student_hidden_states_slct, teacher_hidden_states_slct, target)
+            loss += self.alpha_hiddden * loss_hidden
 
         self.log("loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
