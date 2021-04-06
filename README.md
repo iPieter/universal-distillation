@@ -9,7 +9,7 @@
 [![Conference](http://img.shields.io/badge/AnyConference-year-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)  
 [![Paper](http://img.shields.io/badge/arxiv-math.co:1480.1111-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 -->
-![CI testing](https://github.com/PyTorchLightning/deep-learning-project-template/workflows/CI%20testing/badge.svg?branch=master&event=push)
+![CI testing](https://github.com/ipieter/universal-distillation/workflows/CI%20testing/badge.svg?branch=master&event=push)
 
 
 <!--  
@@ -47,18 +47,17 @@ from project.datasets.mnist import mnist
 from project.lit_classifier_main import LitClassifier
 from pytorch_lightning import Trainer
 
-# model
-model = LitClassifier()
+model_string = "sshleifer/tiny-distilroberta-base"
+tokenizer = AutoTokenizer.from_pretrained(model_string)
 
-# data
-train, val, test = mnist()
+data_module = JITDataModule(
+    file_path=tmpfilepath,
+    tokenizer=tokenizer,
+)
 
-# train
-trainer = Trainer()
-trainer.fit(model, train, val)
+model = BaseTransformer(model_string, train_batch_size=2)
 
-# test using the best model!
-trainer.test(test_dataloaders=test)
+trainer = pl.Trainer()
 ```
 
 ### Citation   
