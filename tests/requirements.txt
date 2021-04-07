@@ -7,3 +7,5 @@ flake8
 check-manifest
 twine==1.13.0
 transformers>=4.4.0
+torch
+-e .
