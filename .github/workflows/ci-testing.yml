@@ -17,7 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macOS-10.15, windows-2019]
+        #os: [ubuntu-20.04, macOS-10.15, windows-2019]
+        os: [ubuntu-20.04]
         python-version: [3.7]
 
     # Timeout: https://stackoverflow.com/a/59076067/4521646
@@ -62,7 +63,7 @@ jobs:
 
     - name: Tests
       run: |
-        coverage run --source project -m py.test project tests -v --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
+        coverage run --source universal_distillation -m py.test universal_distillation tests -v --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
 
     - name: Statistics
       if: success()
