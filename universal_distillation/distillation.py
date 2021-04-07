@@ -31,11 +31,6 @@ from transformers import (
 )
 from pytorch_lightning.plugins import DDPPlugin
 
-
-with open("logging.yaml", "rt") as f:
-    config = yaml.safe_load(f.read())
-    f.close()
-
 # logging.config.dictConfig(config)
 logging.basicConfig(
     level=logging.INFO,
