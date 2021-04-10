@@ -22,7 +22,7 @@ class JITTokenizedDataset(Dataset):
         self,
         file_path: str,
         tokenizer: PreTrainedTokenizerBase,
-        teacher_tokenizers: Optional[Collection[str]] = None,
+        teacher_tokenizers: Optional[Collection[PreTrainedTokenizerBase]] = None,
     ):
         """
         Create a Dataset with one or more tokenizers.
@@ -49,6 +49,7 @@ class JITTokenizedDataset(Dataset):
 
         if teacher_tokenizers:
             logger.info(f"Found {len(teacher_tokenizers)} teacher tokenizers.")
+            self.teacher_tokenizers = teacher_tokenizers
 
     def __len__(self):
         return len(self.data)
@@ -60,6 +61,12 @@ class JITTokenizedDataset(Dataset):
         return self.data[idx]
 
     def batch_sequences(self, batch):
+        """
+        Create tokenized sequences from an array of text sequences.
+
+        Args:
+            batch: A collection of text sentences or a single sentence.
+        """
         if type(batch) == str:
             batch = [batch]
 
@@ -79,6 +86,49 @@ class JITTokenizedDataset(Dataset):
         )
 
         return self._mlm_objective(output)
+
+    
+    def _align_tokens(sentence, target_tokenizer, tokenizer2):
+        """
+        Function that aligns the tokens of two tokenizers. One is considered the target tokenizer.
+        """
+        lower_caseing = target_tokenizer.do_lower_case or tokenizer2.do_lower_case
+        if lower_caseing:
+            print("At least one tokenizer is uncased, continuing with uncased alignment.")
+        
+        aligned_tokens = []
+        
+        target_tokens = iter(target_tokenizer.encode(sentence))
+        source_tokens = iter(tokenizer2.encode(sentence))
+        
+        source_underscore = target_tokenizer.convert_tokens_to_ids("_")
+        target_underscore = tokenizer2.convert_tokens_to_ids("_")
+        
+        for token1, token2 in list(itertools.zip_longest(target_tokens, source_tokens)):
+            token1 = token1 if token1 else target_tokenizer.pad_token_id
+            token2 = token2 if token2 else tokenizer2.pad_token_id
+            
+            t1, t2 = target_tokenizer.decode([source_underscore, token1]).replace("_","").strip(), tokenizer2.decode([target_underscore, token2]).replace("_","").strip()
+            
+            if t1.lower() == t2.lower() if lower_caseing else t1 == t2:
+                # Tokens match, add them
+                aligned_tokens.append([t1, t2])
+            elif t1 in [target_tokenizer.special_tokens_map_extended[t] for t in target_tokenizer.special_tokens_map_extended]:
+                aligned_tokens.append([t1, t2])
+            else:
+                # Tokens don't match, build sequences from left and right tokens until they do
+                # starting with shortest sequence
+                if len(t1) > len(t2):
+                    t1 += next(target_tokens)
+                else:
+                    t2 += next(source_tokens)
+
+                aligned_tokens.append([t1, "Not matched", t2])
+
+
+                pass
+        return aligned_tokens
+        
 
     def _mlm_objective(self, batch):
         """
