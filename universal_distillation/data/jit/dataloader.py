@@ -5,6 +5,7 @@ import logging
 from transformers.tokenization_utils_base import BatchEncoding
 import math
 from typing import Union, Collection, Optional
+import itertools
 
 logger = logging.getLogger("dataloader")
 
