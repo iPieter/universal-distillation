@@ -16,7 +16,7 @@ import logging
 import logging.config
 import yaml
 from os import cpu_count
-from typing import Optional
+from typing import Optional, List
 from transformers import (
     AdamW,
     AutoModelForMaskedLM,
@@ -74,6 +74,7 @@ class BaseTransformer(pl.LightningModule):
         alpha_teacher_mlm: float = 5.0,
         alpha_mlm: float = 2.0,
         alpha_hiddden: float = 1.0,
+        constraints = None,
         **kwargs
     ):
         """
@@ -131,6 +132,23 @@ class BaseTransformer(pl.LightningModule):
                 return_dict=False,
                 output_hidden_states=True
             )
+        
+        for constraint in self.constraints:
+            tmp = (teacher_logits[:, :, constraint[0]] + teacher_logits[:, :, constraint[1]])/2
+            teacher_logits[:, :, constraint[0]] = tmp
+            teacher_logits[:, :, constraint[1]] = tmp
+
+        #tmp = (t_logits[:, :, 195] + t_logits[:, :, 69])/2
+        #t_logits[:, :, 195] = tmp
+        #t_logits[:, :, 69] = tmp
+
+        #tmp = (t_logits[:, :, 582] + t_logits[:, :, 220])/2
+        #t_logits[:, :, 582] = tmp
+        #t_logits[:, :, 220] = tmp
+
+        #tmp = (t_logits[:, :, 1646] + t_logits[:, :, 436])/2
+        #t_logits[:, :, 1646] = tmp
+        #t_logits[:, :, 436] = tmp
 
         mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_logits)
         student_logits_slct = torch.masked_select(student_logits, mask)
