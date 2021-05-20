@@ -1,11 +1,13 @@
-from transformers import AutoTokenizer, PreTrainedTokenizerBase
+from torch.types import Number
+from transformers import PreTrainedTokenizerBase
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import logging
 from transformers.tokenization_utils_base import BatchEncoding
 import math
-from typing import Union, Collection, Optional
+from typing import, Collection, Optional
 import itertools
+import numpy as np 
 
 logger = logging.getLogger("dataloader")
 
@@ -24,6 +26,8 @@ class JITTokenizedDataset(Dataset):
         file_path: str,
         tokenizer: PreTrainedTokenizerBase,
         teacher_tokenizers: Optional[Collection[PreTrainedTokenizerBase]] = None,
+        counts:str = None,
+        mlm_smoothing: Number = 0.7
     ):
         """
         Create a Dataset with one or more tokenizers.
@@ -44,9 +48,18 @@ class JITTokenizedDataset(Dataset):
         
         self.tokenizer.model_max_length = 512
         self.mlm_mask_prop = 0.15
+        if counts:
+            logger.info(f"Loading token counts from {counts} (already pre-computed)")
+            with open(counts, "rb") as fp:
+                counts = pickle.load(fp)
 
-        self.token_probs = torch.ones(self.tokenizer.vocab_size)
-        self.token_probs[self.tokenizer.pad_token_id] = 0
+            self.token_probs = np.maximum(counts, 1) ** -mlm_smoothing
+            self.token_probs[self.tokenizer.pad_token_id] = 0
+
+            self.token_probs = torch.from_numpy(self.token_probs)
+        else:
+            self.token_probs = torch.ones(self.tokenizer.vocab_size)
+            self.token_probs[self.tokenizer.pad_token_id] = 0
 
         if teacher_tokenizers:
             logger.info(f"Found {len(teacher_tokenizers)} teacher tokenizers.")
@@ -187,7 +200,7 @@ class JITTokenizedDataset(Dataset):
             ~pred_mask
         ] = (
             -100
-        )  # previously `mlm_labels[1-pred_mask] = -1`, cf pytorch 1.2.0 compatibility
+        ) 
 
         # sanity checks
         # assert 0 <= token_ids.min() <= token_ids.max() < self.vocab_size

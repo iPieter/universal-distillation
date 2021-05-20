@@ -118,6 +118,8 @@ class BaseTransformer(pl.LightningModule):
         self.alpha_mlm = alpha_mlm
         self.alpha_hiddden = alpha_hiddden
 
+        self.contraints = constraints
+
     def forward(self, **inputs):
         return self.student(**inputs)
 
@@ -137,18 +139,6 @@ class BaseTransformer(pl.LightningModule):
             tmp = (teacher_logits[:, :, constraint[0]] + teacher_logits[:, :, constraint[1]])/2
             teacher_logits[:, :, constraint[0]] = tmp
             teacher_logits[:, :, constraint[1]] = tmp
-
-        #tmp = (t_logits[:, :, 195] + t_logits[:, :, 69])/2
-        #t_logits[:, :, 195] = tmp
-        #t_logits[:, :, 69] = tmp
-
-        #tmp = (t_logits[:, :, 582] + t_logits[:, :, 220])/2
-        #t_logits[:, :, 582] = tmp
-        #t_logits[:, :, 220] = tmp
-
-        #tmp = (t_logits[:, :, 1646] + t_logits[:, :, 436])/2
-        #t_logits[:, :, 1646] = tmp
-        #t_logits[:, :, 436] = tmp
 
         mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_logits)
         student_logits_slct = torch.masked_select(student_logits, mask)
