@@ -54,6 +54,7 @@ def cli_main():
     parser.add_argument("--data", type=str, required=True)
     parser.add_argument("--teacher", type=str, required=True)
     parser.add_argument("--save_dir", type=str, required=True)
+    parser.add_argument("--load_counts", type=str, required=False)
     parser = pl.Trainer.add_argparse_args(parser)
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
@@ -71,7 +72,12 @@ def cli_main():
     # mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
     # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
 
-    model = BaseTransformer(args.teacher, **vars(args))
+    constraints = [
+        [2016, # she
+        2002]  # he
+    ]
+    
+    model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
 
     # ------------
     # training
