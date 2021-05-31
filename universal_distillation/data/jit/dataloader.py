@@ -5,9 +5,9 @@ from torch.utils.data import Dataset
 import logging
 from transformers.tokenization_utils_base import BatchEncoding
 import math
-from typing import, Collection, Optional
+from typing import Collection, Optional
 import itertools
-import numpy as np 
+import numpy as np
 
 logger = logging.getLogger("dataloader")
 
@@ -26,8 +26,8 @@ class JITTokenizedDataset(Dataset):
         file_path: str,
         tokenizer: PreTrainedTokenizerBase,
         teacher_tokenizers: Optional[Collection[PreTrainedTokenizerBase]] = None,
-        counts:str = None,
-        mlm_smoothing: Number = 0.7
+        counts: str = None,
+        mlm_smoothing: Number = 0.7,
     ):
         """
         Create a Dataset with one or more tokenizers.
@@ -45,7 +45,7 @@ class JITTokenizedDataset(Dataset):
         logger.info(f"Loaded {len(self.data)} lines")
 
         self.tokenizer = tokenizer
-        
+
         self.tokenizer.model_max_length = 512
         self.mlm_mask_prop = 0.15
         if counts:
@@ -101,33 +101,42 @@ class JITTokenizedDataset(Dataset):
 
         return self._mlm_objective(output)
 
-    
     def _align_tokens(sentence, target_tokenizer, tokenizer2):
         """
         Function that aligns the tokens of two tokenizers. One is considered the target tokenizer.
         """
         lower_caseing = target_tokenizer.do_lower_case or tokenizer2.do_lower_case
         if lower_caseing:
-            print("At least one tokenizer is uncased, continuing with uncased alignment.")
-        
+            print(
+                "At least one tokenizer is uncased, continuing with uncased alignment."
+            )
+
         aligned_tokens = []
-        
+
         target_tokens = iter(target_tokenizer.encode(sentence))
         source_tokens = iter(tokenizer2.encode(sentence))
-        
+
         source_underscore = target_tokenizer.convert_tokens_to_ids("_")
         target_underscore = tokenizer2.convert_tokens_to_ids("_")
-        
+
         for token1, token2 in list(itertools.zip_longest(target_tokens, source_tokens)):
             token1 = token1 if token1 else target_tokenizer.pad_token_id
             token2 = token2 if token2 else tokenizer2.pad_token_id
-            
-            t1, t2 = target_tokenizer.decode([source_underscore, token1]).replace("_","").strip(), tokenizer2.decode([target_underscore, token2]).replace("_","").strip()
-            
+
+            t1, t2 = (
+                target_tokenizer.decode([source_underscore, token1])
+                .replace("_", "")
+                .strip(),
+                tokenizer2.decode([target_underscore, token2]).replace("_", "").strip(),
+            )
+
             if t1.lower() == t2.lower() if lower_caseing else t1 == t2:
                 # Tokens match, add them
                 aligned_tokens.append([t1, t2])
-            elif t1 in [target_tokenizer.special_tokens_map_extended[t] for t in target_tokenizer.special_tokens_map_extended]:
+            elif t1 in [
+                target_tokenizer.special_tokens_map_extended[t]
+                for t in target_tokenizer.special_tokens_map_extended
+            ]:
                 aligned_tokens.append([t1, t2])
             else:
                 # Tokens don't match, build sequences from left and right tokens until they do
@@ -139,10 +148,8 @@ class JITTokenizedDataset(Dataset):
 
                 aligned_tokens.append([t1, "Not matched", t2])
 
-
                 pass
         return aligned_tokens
-        
 
     def _mlm_objective(self, batch):
         """
@@ -196,11 +203,7 @@ class JITTokenizedDataset(Dataset):
         )
         token_ids = token_ids.long().masked_scatter(pred_mask.bool(), _token_ids.long())
 
-        mlm_labels[
-            ~pred_mask
-        ] = (
-            -100
-        ) 
+        mlm_labels[~pred_mask] = -100
 
         # sanity checks
         # assert 0 <= token_ids.min() <= token_ids.max() < self.vocab_size

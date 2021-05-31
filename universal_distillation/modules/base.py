@@ -34,6 +34,7 @@ class LRPolicy:
     When using multiple GPU's or nodes, communication uses pickle and the default
     transformers learning rate policy with warmup uses a non-pickable lambda.
     """
+
     def __init__(self, num_warmup_steps, num_training_steps):
         """
         Initialize pickable learning rate policy.
@@ -59,6 +60,7 @@ class BaseTransformer(pl.LightningModule):
     """
     Base distillation model.
     """
+
     def __init__(
         self,
         model_name_or_path: str,
@@ -74,7 +76,7 @@ class BaseTransformer(pl.LightningModule):
         alpha_teacher_mlm: float = 5.0,
         alpha_mlm: float = 2.0,
         alpha_hiddden: float = 1.0,
-        constraints = None,
+        constraints=None,
         **kwargs
     ):
         """
@@ -118,25 +120,30 @@ class BaseTransformer(pl.LightningModule):
         self.alpha_mlm = alpha_mlm
         self.alpha_hiddden = alpha_hiddden
 
-        self.contraints = constraints
+        self.constraints = constraints
 
     def forward(self, **inputs):
         return self.student(**inputs)
 
     def training_step(self, batch, batch_idx):
         # print(batch)
-        loss_mlm, student_logits, student_hidden_states = self(**batch, return_dict=False, output_hidden_states=True)
+        loss_mlm, student_logits, student_hidden_states = self(
+            **batch, return_dict=False, output_hidden_states=True
+        )
 
         with torch.no_grad():
             teacher_logits, teacher_hidden_states = self.teacher(
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
                 return_dict=False,
-                output_hidden_states=True
+                output_hidden_states=True,
             )
-        
+
         for constraint in self.constraints:
-            tmp = (teacher_logits[:, :, constraint[0]] + teacher_logits[:, :, constraint[1]])/2
+            tmp = (
+                teacher_logits[:, :, constraint[0]]
+                + teacher_logits[:, :, constraint[1]]
+            ) / 2
             teacher_logits[:, :, constraint[0]] = tmp
             teacher_logits[:, :, constraint[1]] = tmp
 
@@ -159,17 +166,36 @@ class BaseTransformer(pl.LightningModule):
         if self.alpha_hiddden > 0.0:
             student_hidden_states = student_hidden_states[-1]  # (bs, seq_length, dim)
             teacher_hidden_states = teacher_hidden_states[-1]  # (bs, seq_length, dim)
-            mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_hidden_states)  # (bs, seq_length, dim)
+            mask = (
+                batch["attention_mask"]
+                .bool()
+                .unsqueeze(-1)
+                .expand_as(student_hidden_states)
+            )  # (bs, seq_length, dim)
             assert student_hidden_states.size() == teacher_hidden_states.size()
             dim = student_hidden_states.size(-1)
 
-            student_hidden_states_slct = torch.masked_select(student_hidden_states, mask)  # (bs * seq_length * dim)
-            student_hidden_states_slct = student_hidden_states_slct.view(-1, dim)  # (bs * seq_length, dim)
-            teacher_hidden_states_slct = torch.masked_select(teacher_hidden_states, mask)  # (bs * seq_length * dim)
-            teacher_hidden_states_slct = teacher_hidden_states_slct.view(-1, dim)  # (bs * seq_length, dim)
+            student_hidden_states_slct = torch.masked_select(
+                student_hidden_states, mask
+            )  # (bs * seq_length * dim)
+            student_hidden_states_slct = student_hidden_states_slct.view(
+                -1, dim
+            )  # (bs * seq_length, dim)
+            teacher_hidden_states_slct = torch.masked_select(
+                teacher_hidden_states, mask
+            )  # (bs * seq_length * dim)
+            teacher_hidden_states_slct = teacher_hidden_states_slct.view(
+                -1, dim
+            )  # (bs * seq_length, dim)
 
-            target = student_hidden_states_slct.new(student_hidden_states_slct.size(0)).fill_(1)  # (bs * seq_length,)
-            loss_hidden = self.cosine_loss_fct(student_hidden_states_slct, teacher_hidden_states_slct, target)
+            target = student_hidden_states_slct.new(
+                student_hidden_states_slct.size(0)
+            ).fill_(
+                1
+            )  # (bs * seq_length,)
+            loss_hidden = self.cosine_loss_fct(
+                student_hidden_states_slct, teacher_hidden_states_slct, target
+            )
             loss += self.alpha_hiddden * loss_hidden
 
         self.log("loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
