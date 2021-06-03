@@ -13,7 +13,7 @@ class JITDataModule(LightningDataModule):
         self,
         train_path: str,
         tokenizer: PreTrainedTokenizerBase,
-        val_path: Optional[str],
+        val_path: Optional[str] = None,
     ):
         """Create a JITDataModule with a tokenizer and a file path."""
         super().__init__()
