@@ -26,7 +26,7 @@ def test_classifier():
         tokenizer = AutoTokenizer.from_pretrained(model_string)
 
         data_module = JITDataModule(
-            file_path=tmpfilepath,
+            train_path=tmpfilepath,
             tokenizer=tokenizer,
         )
 
