@@ -39,8 +39,12 @@ class JITTokenizedDataset(Dataset):
                 on a sample.
         """
         logger.info(f"Loading data from {file_path}")
+        self.data = []
         with open(file_path, "r", encoding="utf8") as fp:
-            self.data = fp.readlines()
+            for line in fp:
+                # Filter very small lines with less than 10 chars 
+                if len(line) > 10: 
+                    self.data.append(line)
 
         logger.info(f"Loaded {len(self.data)} lines")
 
