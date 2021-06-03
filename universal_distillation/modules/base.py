@@ -202,10 +202,23 @@ class BaseTransformer(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        outputs = self(**batch)
-        val_loss, logits = outputs[:2]
+        """
+        The validation step is used to calculate pseudo perplexity following Salazar et al. (2020). 
+        
+        Because every token needs to be masked seperately, we have an additional loop here. That is 
+        also the reason that we use a batch size of 1. All combined, the steps are:
+        
+        1. tokenize the input sentence.
+        2. loop over each token, mask it, and calculate NLL
+        3. normalize NLL over word or token count.
 
-        return {"loss": val_loss}
+        Julian Salazar et al., 2020. Masked Language Model Scoring. ACL.
+        """
+        for (single_input_id, single_attention_mask) in zip(batch["input_ids"], batch["attention_mask"]):
+            outputs = self(input_ids=single_input_id.unsqueeze(0), attention_mask=single_attention_mask.unsqueeze(0), labels=batch['labels'][0].unsqueeze(0), return_dict=True, output_hidden_states=False)
+            val_loss, logits = outputs[:2]
+
+        return {'loss': val_loss, 'lengths': batch['lengths']}
 
     def validation_epoch_end(self, outputs):
         self.log("val_loss", loss, prog_bar=True)
