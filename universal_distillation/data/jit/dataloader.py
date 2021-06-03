@@ -69,10 +69,52 @@ class JITTokenizedDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
+        "Returns slice or single item"
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
         return self.data[idx]
+
+    def _masked_input(self, position, line):
+        line = line.detach().clone()
+        line[position] = self.tokenizer.mask_token_id
+        return line
+
+    def prepare_ppll(self, batch):
+        """
+        Create tokenized sequences with all tokens individually masked.
+
+        Args:
+            batch: A single sentence.
+        """
+        if type(batch) == str:
+            batch = [batch]
+
+        output: BatchEncoding = self.tokenizer.batch_encode_plus(
+            batch, padding=True, truncation=True, return_tensors="pt"
+        )
+
+        # TODO more efficient implementation
+        output['lengths'] = torch.tensor(
+            [
+                len(x)
+                for x in self.tokenizer.batch_encode_plus(
+                    batch, truncation=True
+                ).input_ids
+            ],
+            dtype=torch.long,
+        )
+        line = output['input_ids'][0]
+
+        mlm_labels = [line for x in range(1, len(line) - 1)]
+        token_ids = [self._masked_input(x,line) for x in range(1, len(line) - 1)]
+
+        return {
+            "input_ids": token_ids,
+            "attention_mask": output.attention_mask,
+            "labels": mlm_labels,
+            "length": output['lengths'],
+        }
 
     def batch_sequences(self, batch):
         """
@@ -101,7 +143,7 @@ class JITTokenizedDataset(Dataset):
 
         return self._mlm_objective(output)
 
-    def _align_tokens(sentence, target_tokenizer, tokenizer2):
+    def _align_tokens(self, sentence, target_tokenizer, tokenizer2):
         """
         Function that aligns the tokens of two tokenizers. One is considered the target tokenizer.
         """
