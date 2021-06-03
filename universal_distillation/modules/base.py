@@ -214,17 +214,15 @@ class BaseTransformer(pl.LightningModule):
 
         Julian Salazar et al., 2020. Masked Language Model Scoring. ACL.
         """
+        val_loss = 0
         for (single_input_id, single_attention_mask) in zip(batch["input_ids"], batch["attention_mask"]):
             outputs = self(input_ids=single_input_id.unsqueeze(0), attention_mask=single_attention_mask.unsqueeze(0), labels=batch['labels'][0].unsqueeze(0), return_dict=True, output_hidden_states=False)
-            val_loss, logits = outputs[:2]
+            val_loss += outputs[1].item()
 
-        return {'loss': val_loss, 'lengths': batch['lengths']}
+        return {'PLL': val_loss / ( batch['length'].item() - 2)}
 
     def validation_epoch_end(self, outputs):
-        self.log("val_loss", loss, prog_bar=True)
-        self.log_dict(
-            self.metric.compute(predictions=preds, references=labels), prog_bar=True
-        )
+        self.log("PLL", outputs['PLL'], prog_bar=True)
         return loss
 
     def setup(self, stage):

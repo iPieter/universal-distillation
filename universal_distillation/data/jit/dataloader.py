@@ -75,6 +75,16 @@ class JITTokenizedDataset(Dataset):
 
         return self.data[idx]
 
+    def _masked_ground_truth(self, position, line):
+        """
+        Create a truth label tensor where all values except the position are -100.
+
+        Useful for calculating pseudo-perplexities.
+        """
+        truth = torch.full_like(line, -100)
+        truth[position] = line[position]
+        return truth
+
     def _masked_input(self, position, line):
         line = line.detach().clone()
         line[position] = self.tokenizer.mask_token_id
@@ -106,8 +116,8 @@ class JITTokenizedDataset(Dataset):
         )
         line = output['input_ids'][0]
 
-        mlm_labels = [line for x in range(1, len(line) - 1)]
-        token_ids = [self._masked_input(x,line) for x in range(1, len(line) - 1)]
+        mlm_labels = [self._masked_ground_truth(x, line) for x in range(1, len(line) - 1)]
+        token_ids = [self._masked_input(x, line) for x in range(1, len(line) - 1)]
 
         return {
             "input_ids": token_ids,
