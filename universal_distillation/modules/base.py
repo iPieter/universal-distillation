@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from math import exp
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
@@ -139,13 +140,14 @@ class BaseTransformer(pl.LightningModule):
                 output_hidden_states=True,
             )
 
-        for constraint in self.constraints:
-            tmp = (
-                teacher_logits[:, :, constraint[0]]
-                + teacher_logits[:, :, constraint[1]]
-            ) / 2
-            teacher_logits[:, :, constraint[0]] = tmp
-            teacher_logits[:, :, constraint[1]] = tmp
+        if self.constraints:
+            for constraint in self.constraints:
+                tmp = (
+                    teacher_logits[:, :, constraint[0]]
+                    + teacher_logits[:, :, constraint[1]]
+                ) / 2
+                teacher_logits[:, :, constraint[0]] = tmp
+                teacher_logits[:, :, constraint[1]] = tmp
 
         mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_logits)
         student_logits_slct = torch.masked_select(student_logits, mask)
@@ -215,15 +217,16 @@ class BaseTransformer(pl.LightningModule):
         Julian Salazar et al., 2020. Masked Language Model Scoring. ACL.
         """
         val_loss = 0
-        for (single_input_id, single_attention_mask) in zip(batch["input_ids"], batch["attention_mask"]):
-            outputs = self(input_ids=single_input_id.unsqueeze(0), attention_mask=single_attention_mask.unsqueeze(0), labels=batch['labels'][0].unsqueeze(0), return_dict=True, output_hidden_states=False)
-            val_loss += outputs[1].item()
+        for (single_input_id, single_label) in zip(batch["input_ids"], batch["labels"]):
+            outputs = self(input_ids=single_input_id.unsqueeze(0), attention_mask=batch['attention_mask'], labels=single_label.unsqueeze(0), return_dict=True, output_hidden_states=False)
+            val_loss += outputs[0].item()
 
-        return {'PLL': val_loss / ( batch['length'].item() - 2)}
+        return {'mean PLL': val_loss / ( batch['length'].item() - 2)}
 
     def validation_epoch_end(self, outputs):
-        self.log("PLL", outputs['PLL'], prog_bar=True)
-        return loss
+        pppl = exp(sum(map(lambda obj: obj['mean PLL'], outputs))/len(outputs))
+        self.log("PPPL", pppl, prog_bar=True)
+        return pppl
 
     def setup(self, stage):
         if stage == "fit":
