@@ -11,8 +11,8 @@ class JITDataModule(LightningDataModule):
 
     def __init__(
         self,
-        train_path: Optional[str] = None,
         tokenizer: PreTrainedTokenizerBase,
+        train_path: Optional[str] = None,
         val_path: Optional[str] = None,
         test_path: Optional[str] = None,
     ):
@@ -58,6 +58,6 @@ class JITDataModule(LightningDataModule):
             test_split,
             batch_size=1,
             pin_memory=True,
-            collate_fn=val_split.prepare_ppll
+            collate_fn=test_split.prepare_ppll
             # num_workers=40
         )

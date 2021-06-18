@@ -49,13 +49,9 @@ def cli_main():
     # args
     # ------------
     parser = ArgumentParser()
-    parser.add_argument("--batch_size", default=32, type=int)
-    parser.add_argument("--num_workers", type=int, default=cpu_count())
     parser.add_argument("--data", type=str, required=True)
-    parser.add_argument("--val_data", type=str, required=True)
     parser.add_argument("--teacher", type=str, required=True)
-    parser.add_argument("--save_dir", type=str, required=True)
-    parser.add_argument("--load_counts", type=str, required=False)
+    parser.add_argument("--checkpoint", type=str, required=True)
     parser = pl.Trainer.add_argparse_args(parser)
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
@@ -65,8 +61,7 @@ def cli_main():
     logger.info(f"Initializing tokenizer {tokenizer}")
 
     data_module = JITDataModule(
-        train_path=args.data,
-        val_path=args.val_data,
+        test_path=args.data,
         tokenizer=tokenizer,
     )
 
@@ -78,6 +73,8 @@ def cli_main():
 
     #model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
     model = BaseTransformer(args.teacher, **vars(args))
+    model.student = AutoModelForMaskedLM.from_pretrained(args.checkpoint)
+
 
     # ------------
     # training
@@ -93,7 +90,7 @@ def cli_main():
     )
 
 
-    trainer.test(test_dataloaders=test_loader)
+    print(trainer.test(model= model, datamodule=data_module))
 
 
 if __name__ == "__main__":
