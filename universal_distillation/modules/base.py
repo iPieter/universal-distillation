@@ -223,10 +223,21 @@ class BaseTransformer(pl.LightningModule):
 
         return {'mean PLL': val_loss / ( batch['length'].item() - 2)}
 
+
+    def test_step(self, batch, batch_idx, dataloader_idx=0):
+        "Same as validation step, calls this function."
+
+        return self.validation_step(batch, batch_idx, dataloader_idx)
+
     def validation_epoch_end(self, outputs):
         pppl = exp(sum(map(lambda obj: obj['mean PLL'], outputs))/len(outputs))
         self.log("PPPL", pppl, prog_bar=True)
         return pppl
+
+    def test_epoch_end(self, outputs):
+        "Same as validation step end, calls this function."
+
+        return self.validation_epoch_end(outputs)
 
     def setup(self, stage):
         if stage == "fit":
