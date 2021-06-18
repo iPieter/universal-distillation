@@ -11,14 +11,16 @@ class JITDataModule(LightningDataModule):
 
     def __init__(
         self,
-        train_path: str,
+        train_path: Optional[str] = None,
         tokenizer: PreTrainedTokenizerBase,
         val_path: Optional[str] = None,
+        test_path: Optional[str] = None,
     ):
         """Create a JITDataModule with a tokenizer and a file path."""
         super().__init__()
         self.train_path = train_path
         self.val_path = val_path
+        self.test_path = test_path
         self.tokenizer = tokenizer
 
     def train_dataloader(self):
@@ -48,4 +50,14 @@ class JITDataModule(LightningDataModule):
         )
 
     def test_dataloader(self):
-        return super().test_dataloader()
+        test_split = JITTokenizedDataset(
+            file_path=self.test_path,
+            tokenizer=self.tokenizer,
+        )
+        return DataLoader(
+            test_split,
+            batch_size=1,
+            pin_memory=True,
+            collate_fn=val_split.prepare_ppll
+            # num_workers=40
+        )
