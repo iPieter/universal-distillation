@@ -118,7 +118,7 @@ class JITTokenizedDataset(Dataset):
             ],
             dtype=torch.long,
         )
-        line = output['input_ids'][0]
+        line = output['input_ids'][0].clamp(max=39981)
 
         mlm_labels = [self._masked_ground_truth(x, line) for x in range(1, len(line) - 1)]
         token_ids = [self._masked_input(x, line) for x in range(1, len(line) - 1)]
