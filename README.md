@@ -12,60 +12,72 @@
 ![CI testing](https://github.com/ipieter/universal-distillation/workflows/CI%20testing/badge.svg?branch=master&event=push)
 
 
-<!--  
-Conference   
--->   
 </div>
  
 ## Description   
 What it does   
 
 ## How to run   
-First, install dependencies   
+First, clone the project and install the dependencies.
+
 ```bash
 # clone project   
-git clone https://github.com/YourGithubName/deep-learning-project-template
+git clone https://github.com/iPieter/universal-distillation
 
 # install project   
-cd deep-learning-project-template 
+cd universal-distillation
 pip install -e .   
 pip install -r requirements.txt
  ```   
- Next, navigate to any file and run it.   
- ```bash
-# module folder
-cd project
+ 
+## Distillation using the Command Line Interface
 
-# run module (example: mnist as your main contribution)   
-python lit_classifier_main.py    
+In this tutorial, we will show you how to set up a distillation task from the command line. You will need two things:
+
+1. A teacher model that you want to distill. All models from [the Hugginface model repository](https://huggingface.co/models?pipeline_tag=fill-mask) with a fill-mask / MLM head will work. In this tutorial, we will use the standard `bert-base-uncased` model.
+2. A dataset that you want to use for distillation. In this tutorial, we a 'small', but high-quality, dataset: Europarl.
+
+### Step 1: Get your dataset
+We will use the English section of the [Europarl corpus](https://opus.nlpl.eu/Europarl.php). 
+This is a very high-quality parallel corpus from the European Parlement created by professional interpreters and translators.
+It's also quite small for a language corpus nowadays, only 114 MB, but for our distillation tutorial that's ok.
+
+```bash
+wget https://opus.nlpl.eu/download.php\?f\=Europarl/v8/mono/en.txt.gz -O en.txt.gz
+gunzip en.txt.gz
 ```
 
-## Imports
-This project is setup as a package which means you can now easily import any file into any other file like so:
+The data is now unzipped and stored in the file `en.txt`.
+
+---
+
+### Step 2: Start training
+Now we have the data, we can start training. Downloading the teacher model will happen automatically, so no need to do this manually. If you feel this takes too long and you just want to try out the training, for example to get a sense of timings, you can add `--limit_train_batches N`. This limits each epoch to `N` batches during training.
+
+```bash
+python universal_distillation/distillation.py \
+    --batch_size 8 \
+    --gpus 1 \
+    --max_epochs 3 \
+    --save_dir my_distilled_model/ \
+    --teacher bert-base-uncased \
+    --data en.txt
+```
+
+There are a few things that happen in the background once you run that command. First, this library creates a student and a teacher model. The teacher is `bert-base-uncased` and the student will use the same architecture as the teacher by default, only the number of heads is smaller: 6 instead of 12. Since we are training on a specific domain (Europarl), this should be enough. Of course, you can mix and match different and bigger teachers with smaller students, but the performance will vary a lot.  
+
+Second, the Huggingface library downloads the teacher model and the tokenizer. Third, the dataset is loaded from disk and initialized with the tokenizer, notice that the tokenization itself happens later by default. Finally, the distillation loop starts. 
+
+---
+
+### Step 3: Use your model
+Finally, you can use the model with the Huggingface library! All the files from the student (Pytorch model and tokenizer) are saved in the folder we defined earlier: `my_distilled_model/`. You can import the model from this folder directly and test the masked language modeling task with only 3 lines: 
+
 ```python
-from project.datasets.mnist import mnist
-from project.lit_classifier_main import LitClassifier
-from pytorch_lightning import Trainer
+from transformers import pipeline
+p = pipeline("fill-mask", model="my_distilled_model/")
 
-model_string = "sshleifer/tiny-distilroberta-base"
-tokenizer = AutoTokenizer.from_pretrained(model_string)
-
-data_module = JITDataModule(
-    file_path=tmpfilepath,
-    tokenizer=tokenizer,
-)
-
-model = BaseTransformer(model_string, train_batch_size=2)
-
-trainer = pl.Trainer()
+p("This is a [MASK].")
 ```
 
-### Citation   
-```
-@article{YourName,
-  title={Your Title},
-  author={Your team},
-  journal={Location},
-  year={Year}
-}
-```   
+Although this was a straitforward example, this is often enough to create your own domain-adapted model. In this case, it's 

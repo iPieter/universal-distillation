@@ -105,10 +105,10 @@ class BaseTransformer(pl.LightningModule):
         self.config: PretrainedConfig = AutoConfig.from_pretrained(model_name_or_path)
         self.config.num_hidden_layers = 6
         self.student = AutoModelForMaskedLM.from_config(self.config)
-        self.student.resize_token_embeddings(40000)
+        #self.student.resize_token_embeddings(40000)
 
         self.teacher = AutoModelForMaskedLM.from_pretrained(model_name_or_path)
-        self.teacher.resize_token_embeddings(40000)
+        #self.teacher.resize_token_embeddings(40000)
         self.teacher.eval()
         for param in self.teacher.parameters():
             param.requires_grad = False
