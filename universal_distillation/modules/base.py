@@ -232,12 +232,11 @@ class BaseTransformer(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         pppl = exp(sum(map(lambda obj: obj['mean PLL'], outputs))/len(outputs))
         self.log("PPPL", pppl, prog_bar=True)
-        return pppl
 
     def test_epoch_end(self, outputs):
         "Same as validation step end, calls this function."
 
-        return self.validation_epoch_end(outputs)
+        self.validation_epoch_end(outputs)
 
     def setup(self, stage):
         if stage == "fit":
