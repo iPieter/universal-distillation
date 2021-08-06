@@ -18,6 +18,7 @@ import yaml
 from os import cpu_count
 from typing import Optional
 from pytorch_lightning.callbacks import Callback
+from typing import Callable
 
 import os
 
@@ -42,10 +43,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class CommitCallback(Callback):
+    def __init__(self, path: str, checkpoint: Callable) -> None:
+        super().__init__()
+        self.path = path
+
 
     def on_validation_end(self, trainer, pl_module):
         logger.info('Commit this data')
-        logger.info(f"git commit -am 'Logging of epoch {trainer.current_epoch}'")
+        os.system(f"cd {self.path}; git add tb_logs; git commit -m 'Logging of epoch {trainer.current_epoch} step {trainer.global_step}'")
         #os.system(f"git commit -am 'Logging of epoch {trainer.current_epoch}'")
         
 
@@ -92,7 +97,9 @@ def cli_main():
     # ------------
     # training
     # ------------
-    tb_logger = TensorBoardLogger(args.save_dir, name="tb_logs")
+    tb_logger = TensorBoardLogger(args.save_dir, name="tb_logs", default_hp_metric=False)
+
+    tokenizer.save_pretrained(args.save_dir)
 
 
     trainer = pl.Trainer.from_argparse_args(
@@ -101,12 +108,12 @@ def cli_main():
         # accelerator="ddp",
         # plugins=[DDPPlugin(find_unused_parameters=False)],
         # profiler="simple",
-        callbacks=[CommitCallback()]
+        callbacks=[CommitCallback(args.save_dir, lambda model=model : model.student.save_pretrained(args.save_dir))],
+        checkpoint_callback=False
     )
     trainer.fit(model, data_module)
 
     model.student.save_pretrained(args.save_dir)
-    tokenizer.save_pretrained(args.save_dir)
 
     # ------------
     # testing
