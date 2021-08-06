@@ -17,6 +17,9 @@ import logging.config
 import yaml
 from os import cpu_count
 from typing import Optional
+from pytorch_lightning.callbacks import Callback
+
+import os
 
 from universal_distillation.modules.base import BaseTransformer
 from universal_distillation.data.jit import JITDataModule
@@ -38,6 +41,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class CommitCallback(Callback):
+
+    def on_validation_end(self, trainer, pl_module):
+        logger.info('Commit this data')
+        logger.info(f"git commit -am 'Logging of epoch {trainer.current_epoch}'")
+        #os.system(f"git commit -am 'Logging of epoch {trainer.current_epoch}'")
+        
 
 def cli_main():
     """
@@ -82,7 +92,8 @@ def cli_main():
     # ------------
     # training
     # ------------
-    tb_logger = TensorBoardLogger("tb_logs", name="my_model")
+    tb_logger = TensorBoardLogger(args.save_dir, name="tb_logs")
+
 
     trainer = pl.Trainer.from_argparse_args(
         args,
@@ -90,6 +101,7 @@ def cli_main():
         # accelerator="ddp",
         # plugins=[DDPPlugin(find_unused_parameters=False)],
         # profiler="simple",
+        callbacks=[CommitCallback()]
     )
     trainer.fit(model, data_module)
 
