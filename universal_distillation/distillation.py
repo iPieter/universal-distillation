@@ -43,15 +43,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class CommitCallback(Callback):
-    def __init__(self, path: str, checkpoint: Callable) -> None:
+    def __init__(self, path: str, save_checkpoint: Callable) -> None:
         super().__init__()
         self.path = path
+        self.save_checkpoint = save_checkpoint
 
 
     def on_validation_end(self, trainer, pl_module):
         logger.info('Commit this data')
         os.system(f"cd {self.path}; git add tb_logs; git commit -m 'Logging of epoch {trainer.current_epoch} step {trainer.global_step}'")
-        #os.system(f"git commit -am 'Logging of epoch {trainer.current_epoch}'")
+        self.save_checkpoint()        
         
 
 def cli_main():
