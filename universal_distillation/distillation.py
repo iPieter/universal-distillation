@@ -51,7 +51,7 @@ class CommitCallback(Callback):
 
     def on_validation_end(self, trainer, pl_module):
         logger.info('Commit this data')
-        os.system(f"cd {self.path}; git add tb_logs; git commit -m 'Logging of epoch {trainer.current_epoch} step {trainer.global_step}'")
+        os.system(f"cd {self.path}; git add tb_logs; git commit -m 'Logging of epoch {trainer.current_epoch} step {trainer.global_step}'; git push")
         self.save_checkpoint()        
         
 
