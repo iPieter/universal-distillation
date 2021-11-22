@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.nn import functional as F
 from torch.utils.data import (
     DataLoader,
@@ -86,10 +87,6 @@ def cli_main():
         tokenizer=tokenizer,
     )
 
-    # dataset = MNIST('', train=True, download=True, transform=transforms.ToTensor())
-    # mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
-    # dataset_train, dataset_val = random_split(dataset, [int(len(dataset)*0.9), int(len(dataset)*0.1)])
-
     #constraints = [[2016, 2002]]  # she  # he
 
     #model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
@@ -106,10 +103,13 @@ def cli_main():
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=tb_logger,
-        # accelerator="ddp",
-        # plugins=[DDPPlugin(find_unused_parameters=False)],
+        accelerator="ddp",
+        plugins=[DDPPlugin(find_unused_parameters=False)],
         # profiler="simple",
-        callbacks=[CommitCallback(args.save_dir, lambda model=model : model.student.save_pretrained(args.save_dir))],
+        callbacks=[
+            EarlyStopping(monitor="PPPL"),
+            #CommitCallback(args.save_dir, lambda model=model : model.student.save_pretrained(args.save_dir))
+            ],
         checkpoint_callback=False
     )
     trainer.fit(model, data_module)
