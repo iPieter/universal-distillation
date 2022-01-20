@@ -15,7 +15,7 @@
 </div>
  
 ## Description   
-What it does   
+Create distilled models from **every masked language model on the HuggingFace hub** with just one Bash command.
 
 ## How to run   
 First, clone the project and install the dependencies.
@@ -81,3 +81,15 @@ p("This is a [MASK].")
 ```
 
 Although this was a straitforward example, this is often enough to create your own domain-adapted model. In this case, it's 
+
+## Evaluating
+You can also run an intrinsic evaluation using the [pseudo-perplexity](https://arxiv.org/abs/1910.14659). You need to specify the teacher and distilled model, but if you only run the evaluation, you can give the target model for both arguments.
+
+```bash
+python universal_distillation/evaluation.py 
+    --gpus=0 
+    --limit_test_batches=500 
+    --teacher=pdelobelle/robbert-v2-dutch-base
+    --data=data/oscar_dutch/nl_dedup_part_2.txt 
+    --checkpoint=DTAI-KULeuven/robbertje-39-gb-non-shuffled
+```
