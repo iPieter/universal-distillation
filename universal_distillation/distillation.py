@@ -87,10 +87,10 @@ def cli_main():
         tokenizer=tokenizer,
     )
 
-    #constraints = [[2016, 2002]]  # she  # he
+    constraints = [[2016, 2002]]  # she  # he
 
-    #model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
-    model = BaseTransformer(args.teacher, **vars(args))
+    model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
+    #model = BaseTransformer(args.teacher, **vars(args))
 
     # ------------
     # training

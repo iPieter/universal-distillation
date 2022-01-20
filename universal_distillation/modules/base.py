@@ -26,7 +26,20 @@ from transformers import (
     get_linear_schedule_with_warmup,
     PretrainedConfig,
 )
-
+from problog import program
+from problog.learning import lfi
+from problog.engine import DefaultEngine
+from problog.logic import (
+    Term,
+    Constant,
+    Clause,
+    AnnotatedDisjunction,
+    Or,
+    Var,
+    InstantiationError,
+    ArithmeticError,
+    term2list,
+)
 
 class LRPolicy:
     """
@@ -148,6 +161,62 @@ class BaseTransformer(pl.LightningModule):
                 ) / 2
                 teacher_logits[:, :, constraint[0]] = tmp
                 teacher_logits[:, :, constraint[1]] = tmp
+            
+            def extract_evidence(pl):
+                engine = DefaultEngine()
+                atoms = engine.query(pl, Term("evidence", None, None))
+                atoms1 = engine.query(pl, Term("evidence", None))
+                atoms2 = engine.query(pl, Term("observe", None))
+                for atom in atoms1 + atoms2:
+                    atom = atom[0]
+                    if atom.is_negated():
+                        atoms.append((-atom, Term("false")))
+                    else:
+                        atoms.append((atom, Term("true")))
+                result = []
+                for at, vl in atoms:
+                    vlr = str(vl) == "true"
+                    result.append((at, vlr))
+                return result
+
+            def read_lines(inp: str):
+                example = ""
+                for line in inp.splitlines():
+                    if line.strip().startswith("---"):
+                        pl = program.PrologString(example)
+                        atoms = extract_evidence(pl)
+                        if len(atoms) > 0:
+                            yield atoms
+                        example = ""
+                    else:
+                        example += line
+                if example:
+                    pl = program.PrologString(example)
+                    atoms = extract_evidence(pl)
+                    if len(atoms) > 0:
+                        yield atoms
+
+            examples = list(read_lines("""evidence(outcome(he)).
+---
+evidence(outcome(she))."""))
+
+            #he = Term('outcome(he).')
+            #she = Term('outcome(she).')
+
+            #examples = [[(she, True)] [(he, True)],
+            p = program.PrologString("""0.685::word(he); 0.135::word(she).
+
+0.5::outcome(he); 0.5::outcome(she).
+
+t(_)::bias(he); t(_)::bias(she).
+outcome(X):- word(X), bias(X).""")
+            #score, weights, names, iterations, _ = lfi.run_lfi(p, examples, normalize=False)
+
+            #new_names = []
+            #for n in names:
+            #    new_names.append(
+            #        (str(n.with_probability()),) + p.lineno(n.location)[1:]
+            #    )
 
         mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_logits)
         student_logits_slct = torch.masked_select(student_logits, mask)
