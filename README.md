@@ -2,14 +2,16 @@
  
 # Universal Language Model Distillation
 
+
+[![Paper](https://img.shields.io/badge/paper-CLIN%202021-B31B1B.svg)](https://lirias.kuleuven.be/retrieve/625470)
+![CI testing](https://github.com/ipieter/universal-distillation/workflows/CI%20testing/badge.svg?branch=master&event=push)
 <!--
-[![Paper](http://img.shields.io/badge/paper-arxiv.1001.2234-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 [![Conference](http://img.shields.io/badge/NeurIPS-2019-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
 [![Conference](http://img.shields.io/badge/ICLR-2019-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
 [![Conference](http://img.shields.io/badge/AnyConference-year-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)  
 [![Paper](http://img.shields.io/badge/arxiv-math.co:1480.1111-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 -->
-![CI testing](https://github.com/ipieter/universal-distillation/workflows/CI%20testing/badge.svg?branch=master&event=push)
+
 
 
 </div>
@@ -82,7 +84,7 @@ p("This is a [MASK].")
 
 Although this was a straitforward example, this is often enough to create your own domain-adapted model. In this case, it's 
 
-## Evaluating
+## Evaluating language models
 You can also run an intrinsic evaluation using the [pseudo-perplexity](https://arxiv.org/abs/1910.14659). You need to specify the teacher and distilled model, but if you only run the evaluation, you can give the target model for both arguments.
 
 ```bash
