@@ -4,6 +4,7 @@
 
 
 [![Paper](https://img.shields.io/badge/paper-CLIN%202021-B31B1B.svg)](https://lirias.kuleuven.be/retrieve/625470)
+[![Paper](https://img.shields.io/badge/paper-ECMLPKDD%202022-B31B1B.svg)](https://arxiv.org/abs/2207.04546)
 ![CI testing](https://github.com/ipieter/universal-distillation/workflows/CI%20testing/badge.svg?branch=master&event=push)
 <!--
 [![Conference](http://img.shields.io/badge/NeurIPS-2019-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
@@ -18,6 +19,13 @@
  
 ## Description   
 Create distilled models from **every masked language model on the HuggingFace hub** with just one Bash command.
+
+**Features:**
+- Language-agnostic distillation of BERT models.
+- Automatic distributed and multi-GPU training.
+- Evaluate using standard measures and more advanced, like pseudo-perplexity.
+- Add constraints to reduce stereotyping [using our FairDistillation technique](https://arxiv.org/abs/2207.04546).
+- *Upcoming*: distill multiple models into one model, with automated token translation.
 
 ## How to run   
 First, clone the project and install the dependencies.
