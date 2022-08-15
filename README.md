@@ -103,3 +103,13 @@ python universal_distillation/evaluation.py
     --data=data/oscar_dutch/nl_dedup_part_2.txt 
     --checkpoint=DTAI-KULeuven/robbertje-39-gb-non-shuffled
 ```
+
+# FairDistillation
+This code-base is also used for our ECML-PKDD 2022 paper, where we combine knowledge distillation of language models with fairness constraints. The constraints we tested in the paper are straitforward substitutionf of gender pronouns, but the code supports any single-token substitution. These can be added to the distillation process by defining which tokens you want to equalize. For instance, `he` and `she` have token ids 2016 and 2002, so we can define a substitution pair with both tokens. The probabilities over both tokens get equalized.
+
+You can add tokens by modifying `universal-distillation/distillation.py` around line 90. Don't forget to also include the constraints when creating the `BaseTransformer` model.
+
+```python
+constraints = [[2016, 2002]]  # she  # he
+model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
+```
