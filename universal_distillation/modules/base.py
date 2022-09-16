@@ -94,8 +94,6 @@ class BaseTransformer(pl.LightningModule):
             accumulate_grad_batches: Gradient accumulation multiplier.
             max_epochs: Number of epochs.
             temperature: Knowledge distillation hyperparameter.
-            alpha_teacher_mlm: Weight of the MLM distillation loss.
-            alpha_mlm: Weight of the regular MLM loss, i.e. pretraining.
             alpha_hiddden: Weight of the hidden state distillation loss.
         """
         super().__init__()
@@ -103,102 +101,19 @@ class BaseTransformer(pl.LightningModule):
         self.save_hyperparameters()
 
         self.config: PretrainedConfig = AutoConfig.from_pretrained(model_name_or_path)
-        self.config.num_hidden_layers = 6
-        self.student = AutoModelForMaskedLM.from_config(self.config)
-        #self.student.resize_token_embeddings(40000)
-
-        self.teacher = AutoModelForMaskedLM.from_pretrained(model_name_or_path)
-        #self.teacher.resize_token_embeddings(40000)
-        self.teacher.eval()
-        for param in self.teacher.parameters():
-            param.requires_grad = False
-
-        self.ce_loss_fct = nn.KLDivLoss(reduction="batchmean")
-        self.cosine_loss_fct = nn.CosineEmbeddingLoss(reduction="mean")
-
-        self.temperature = temperature
-        self.alpha_teacher_mlm = alpha_teacher_mlm
-        self.alpha_mlm = alpha_mlm
-        self.alpha_hiddden = alpha_hiddden
-
-        self.constraints = constraints
+        self.student = AutoModelForMaskedLM.from_pretrained(model_name_or_path)
+        self.student.resize_token_embeddings(42774)
 
     def forward(self, **inputs):
         return self.student(**inputs)
 
     def training_step(self, batch, batch_idx):
-        # print(batch)
+        #(batch['input_ids'].shape)
         loss_mlm, student_logits, student_hidden_states = self(
             **batch, return_dict=False, output_hidden_states=True
         )
 
-        with torch.no_grad():
-            teacher_logits, teacher_hidden_states = self.teacher(
-                input_ids=batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                return_dict=False,
-                output_hidden_states=True,
-            )
-
-        if self.constraints:
-            for constraint in self.constraints:
-                tmp = (
-                    teacher_logits[:, :, constraint[0]]
-                    + teacher_logits[:, :, constraint[1]]
-                ) / 2
-                teacher_logits[:, :, constraint[0]] = tmp
-                teacher_logits[:, :, constraint[1]] = tmp
-
-        mask = batch["attention_mask"].bool().unsqueeze(-1).expand_as(student_logits)
-        student_logits_slct = torch.masked_select(student_logits, mask)
-        student_logits_slct = student_logits_slct.view(-1, student_logits.size(-1))
-        teacher_logits_slct = torch.masked_select(teacher_logits, mask)
-        teacher_logits_slct = teacher_logits_slct.view(-1, student_logits.size(-1))
-        assert teacher_logits_slct.size() == student_logits_slct.size()
-
-        loss_teacher_mlm = (
-            self.ce_loss_fct(
-                F.log_softmax(student_logits_slct / self.temperature, dim=-1),
-                F.softmax(teacher_logits_slct / self.temperature, dim=-1),
-            )
-            * (self.temperature) ** 2
-        )
-        loss = self.alpha_teacher_mlm * loss_teacher_mlm + self.alpha_mlm * loss_mlm
-
-        if self.alpha_hiddden > 0.0:
-            student_hidden_states = student_hidden_states[-1]  # (bs, seq_length, dim)
-            teacher_hidden_states = teacher_hidden_states[-1]  # (bs, seq_length, dim)
-            mask = (
-                batch["attention_mask"]
-                .bool()
-                .unsqueeze(-1)
-                .expand_as(student_hidden_states)
-            )  # (bs, seq_length, dim)
-            assert student_hidden_states.size() == teacher_hidden_states.size()
-            dim = student_hidden_states.size(-1)
-
-            student_hidden_states_slct = torch.masked_select(
-                student_hidden_states, mask
-            )  # (bs * seq_length * dim)
-            student_hidden_states_slct = student_hidden_states_slct.view(
-                -1, dim
-            )  # (bs * seq_length, dim)
-            teacher_hidden_states_slct = torch.masked_select(
-                teacher_hidden_states, mask
-            )  # (bs * seq_length * dim)
-            teacher_hidden_states_slct = teacher_hidden_states_slct.view(
-                -1, dim
-            )  # (bs * seq_length, dim)
-
-            target = student_hidden_states_slct.new(
-                student_hidden_states_slct.size(0)
-            ).fill_(
-                1
-            )  # (bs * seq_length,)
-            loss_hidden = self.cosine_loss_fct(
-                student_hidden_states_slct, teacher_hidden_states_slct, target
-            )
-            loss += self.alpha_hiddden * loss_hidden
+        loss = loss_mlm
 
         self.log("loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
@@ -240,17 +155,7 @@ class BaseTransformer(pl.LightningModule):
 
     def setup(self, stage):
         if stage == "fit":
-            # Get dataloader by calling it - train_dataloader() is called after setup() by default
-            train_loader = self.train_dataloader()
-
-            # Calculate total steps
-            self.total_steps = (
-                (
-                    len(train_loader.dataset) // (self.hparams.train_batch_size)
-                )  # * max(1, self.hparams.gpus)))
-                // self.hparams.accumulate_grad_batches
-                * float(self.hparams.max_epochs)
-            )
+            pass
 
     def configure_optimizers(self):
         "Prepare optimizer and schedule (linear warmup and decay)"
@@ -283,7 +188,7 @@ class BaseTransformer(pl.LightningModule):
         scheduler = {
             "scheduler": LambdaLR(
                 optimizer,
-                lr_lambda=LRPolicy(self.hparams.warmup_steps, self.total_steps),
+                lr_lambda=LRPolicy(self.hparams.warmup_steps,self.trainer.estimated_stepping_batches,),
             ),
             "interval": "step",
             "frequency": 1,

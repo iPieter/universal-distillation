@@ -3,6 +3,9 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks import ModelCheckpoint
+
 from torch.nn import functional as F
 from torch.utils.data import (
     DataLoader,
@@ -43,18 +46,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 class CommitCallback(Callback):
     def __init__(self, path: str, save_checkpoint: Callable) -> None:
         super().__init__()
         self.path = path
         self.save_checkpoint = save_checkpoint
 
-
     def on_validation_end(self, trainer, pl_module):
-        logger.info('Commit this data')
-        os.system(f"cd {self.path}; git add tb_logs; git commit -m 'Logging of epoch {trainer.current_epoch} step {trainer.global_step}'; git push")
-        self.save_checkpoint()        
-        
+        logger.info("Commit this data")
+        os.system(
+            f"cd {self.path}; git add tb_logs; git commit -m 'Logging of epoch {trainer.current_epoch} step {trainer.global_step}'; git push"
+        )
+        self.save_checkpoint()
+
 
 def cli_main():
     """
@@ -77,7 +82,9 @@ def cli_main():
     parser = BaseTransformer.add_model_specific_args(parser)
     args = parser.parse_args()
 
-    tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(args.teacher)
+    tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(
+        "./tokenizer-2022/"
+    )
 
     logger.info(f"Initializing tokenizer {tokenizer}")
 
@@ -87,30 +94,46 @@ def cli_main():
         tokenizer=tokenizer,
     )
 
-    #constraints = [[2016, 2002]]  # she  # he
+    # constraints = [[2016, 2002]]  # she  # he
 
-    #model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
+    # model = BaseTransformer(args.teacher, constraints=constraints, **vars(args))
     model = BaseTransformer(args.teacher, **vars(args))
 
     # ------------
     # training
     # ------------
-    tb_logger = TensorBoardLogger(args.save_dir, name="tb_logs", default_hp_metric=False)
+    tb_logger = TensorBoardLogger(
+        args.save_dir, name="tb_logs", default_hp_metric=False
+    )
 
     tokenizer.save_pretrained(args.save_dir)
 
+    lr_monitor = LearningRateMonitor(logging_interval="step")
+
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="checkpoints/",
+        save_top_k=10,
+        monitor="PPPL",
+        every_n_epochs=None,
+        save_on_train_epoch_end=False,
+        #train_time_interval=30,
+        filename="checkpoint-{epoch:02d}-{global_step}-{PPPL:.2f}",
+    )
 
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=tb_logger,
-        accelerator="ddp",
-        plugins=[DDPPlugin(find_unused_parameters=False)],
+        accelerator="cuda",
+        plugins=[],
+        accumulate_grad_batches=128,
         # profiler="simple",
         callbacks=[
             EarlyStopping(monitor="PPPL"),
-            #CommitCallback(args.save_dir, lambda model=model : model.student.save_pretrained(args.save_dir))
-            ],
-        checkpoint_callback=False
+            lr_monitor,
+            checkpoint_callback
+            # CommitCallback(args.save_dir, lambda model=model : model.student.save_pretrained(args.save_dir))
+        ],
+        # checkpoint_callback=False
     )
     trainer.fit(model, data_module)
 

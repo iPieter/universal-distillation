@@ -30,10 +30,11 @@ class JITDataModule(LightningDataModule):
         )
         return DataLoader(
             train_split,
-            batch_size=6,
+            batch_size=8,
             collate_fn=train_split.batch_sequences,
             pin_memory=True,
-            # num_workers=40
+            # persistent_workers=True,
+            # num_workers=0,
         )
 
     def val_dataloader(self):

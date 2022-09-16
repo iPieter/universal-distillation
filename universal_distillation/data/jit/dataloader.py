@@ -1,18 +1,19 @@
 from torch.types import Number
 from transformers import PreTrainedTokenizerBase
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, IterableDataset
 import logging
 from transformers.tokenization_utils_base import BatchEncoding
 import math
 from typing import Collection, Optional
 import itertools
 import numpy as np
+import pickle
 
 logger = logging.getLogger("dataloader")
 
 
-class JITTokenizedDataset(Dataset):
+class JITTokenizedDataset(IterableDataset):
     """
     Pytorch Dataset that tokenizes a textual dataset just in time (JIT).
 
@@ -26,7 +27,7 @@ class JITTokenizedDataset(Dataset):
         file_path: str,
         tokenizer: PreTrainedTokenizerBase,
         teacher_tokenizers: Optional[Collection[PreTrainedTokenizerBase]] = None,
-        counts: str = None,
+        counts: str = "/cw/dtaidata/ml/2019-berdt/data/oscar-2022/token_counts.pickle",
         mlm_smoothing: Number = 0.7,
     ):
         """
@@ -38,15 +39,9 @@ class JITTokenizedDataset(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        logger.info(f"Loading data from {file_path}")
-        self.data = []
-        with open(file_path, "r", encoding="utf8") as fp:
-            for line in fp:
-                # Filter very small lines with less than 10 chars 
-                if len(line) > 10: 
-                    self.data.append(line)
 
-        logger.info(f"Loaded {len(self.data)} lines")
+        logger.info(f"Loading data from {file_path}")
+        self.file_path = file_path
 
         self.tokenizer = tokenizer
 
@@ -70,14 +65,25 @@ class JITTokenizedDataset(Dataset):
             self.teacher_tokenizers = teacher_tokenizers
 
     def __len__(self):
-        return len(self.data)
+        return 98246640
 
-    def __getitem__(self, idx):
-        "Returns slice or single item"
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
+    def __iter__(self):
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            file_itr = open(self.file_path)
+            return file_itr
+        else:
+            worker_total_num = worker_info.num_workers
+            worker_id = worker_info.id
+            # Create an iterator
+            file_itr = open(self.file_path)
 
-        return self.data[idx]
+            # Map each element using the line_mapper
+
+            # Add multiworker functionality
+            mapped_itr = itertools.islice(file_itr, worker_id, None, worker_total_num)
+
+            return mapped_itr
 
     def _masked_ground_truth(self, position, line):
         """
@@ -105,29 +111,31 @@ class JITTokenizedDataset(Dataset):
             batch = [batch]
 
         output: BatchEncoding = self.tokenizer.batch_encode_plus(
-            batch, padding=True, truncation=True, return_tensors="pt"
+            batch, padding=True, truncation=True, max_length=512, return_tensors="pt"
         )
 
         # TODO more efficient implementation
-        output['lengths'] = torch.tensor(
+        output["lengths"] = torch.tensor(
             [
                 len(x)
                 for x in self.tokenizer.batch_encode_plus(
-                    batch, truncation=True
+                    batch, truncation=True, max_length=512
                 ).input_ids
             ],
             dtype=torch.long,
         )
-        line = output['input_ids'][0].clamp(max=39981)
+        line = output["input_ids"][0].clamp(max=42773)
 
-        mlm_labels = [self._masked_ground_truth(x, line) for x in range(1, len(line) - 1)]
+        mlm_labels = [
+            self._masked_ground_truth(x, line) for x in range(1, len(line) - 1)
+        ]
         token_ids = [self._masked_input(x, line) for x in range(1, len(line) - 1)]
 
         return {
             "input_ids": token_ids,
             "attention_mask": output.attention_mask,
             "labels": mlm_labels,
-            "length": output['lengths'],
+            "length": output["lengths"],
         }
 
     def batch_sequences(self, batch):
@@ -141,7 +149,7 @@ class JITTokenizedDataset(Dataset):
             batch = [batch]
 
         output: BatchEncoding = self.tokenizer.batch_encode_plus(
-            batch, padding=True, truncation=True, return_tensors="pt"
+            batch, padding=True, truncation=True, max_length=512, return_tensors="pt"
         )
 
         # TODO more efficient implementation
@@ -149,7 +157,7 @@ class JITTokenizedDataset(Dataset):
             [
                 len(x)
                 for x in self.tokenizer.batch_encode_plus(
-                    batch, truncation=True
+                    batch, truncation=True, max_length=512
                 ).input_ids
             ],
             dtype=torch.long,
@@ -263,6 +271,7 @@ class JITTokenizedDataset(Dataset):
 
         # sanity checks
         # assert 0 <= token_ids.min() <= token_ids.max() < self.vocab_size
+        # print(token_ids.max())
 
         return {
             "input_ids": token_ids,
